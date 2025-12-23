@@ -3,11 +3,11 @@ import { getDB } from '../db/database';
 import { Worker, Card, Field, Species, HarvestContainer, CardAssignment } from '../types';
 
 // Replace with your computer's IP address
-const API_URL = 'http://172.16.0.145:5173/api/v1/sync';
-const API_TOKEN = 'your_sanctum_token'; // TODO: Implement Login to get token
+const API_URL = 'https://campos.appgreenex.cl/api/v1/sync';
 
-export const syncData = async () => {
+export const syncData = async (token: string) => {
     const db = await getDB();
+
 
     try {
         // 1. UPLOAD
@@ -21,7 +21,7 @@ export const syncData = async () => {
                 collections: unsyncedCollections,
                 card_assignments: unsyncedAssignments
             }, {
-                headers: { Authorization: `Bearer ${API_TOKEN}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             // Mark as synced
@@ -32,7 +32,7 @@ export const syncData = async () => {
 
         // 2. DOWNLOAD
         const response = await axios.get(`${API_URL}/download`, {
-            headers: { Authorization: `Bearer ${API_TOKEN}` }
+            headers: { Authorization: `Bearer ${token}` }
         });
 
         const data = response.data;

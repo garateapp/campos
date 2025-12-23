@@ -101,7 +101,7 @@ export default function Login({
                     )}
 
                     <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
+                        Acceder
                     </PrimaryButton>
                 </div>
             </form>
