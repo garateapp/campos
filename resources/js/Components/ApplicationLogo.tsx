@@ -4,7 +4,7 @@ export default function ApplicationLogo(props: ImgHTMLAttributes<HTMLImageElemen
     return (
         <img
             {...props}
-            src="/img/logo.webp"
+            src="/img/logo-gestioncampos.png"
             alt="Greenex Logo"
         />
     );

@@ -6,8 +6,6 @@ use Illuminate\Http\Request;
 
 class HarvestCollectionController extends Controller
 {
-    
-
     public function index()
     {
         $fields = \App\Models\Field::where('company_id', \Illuminate\Support\Facades\Auth::user()->company_id)->orderBy('name')->get();
