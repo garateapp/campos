@@ -37,4 +37,12 @@ class Species extends Model
     {
         return $this->hasMany(Variety::class);
     }
+
+    /**
+     * Get the harvest containers for the species.
+     */
+    public function harvestContainers(): HasMany
+    {
+        return $this->hasMany(HarvestContainer::class);
+    }
 }
