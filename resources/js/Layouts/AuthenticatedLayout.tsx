@@ -10,7 +10,7 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    const user = usePage().props.auth.user as any;
     const isSuperAdmin =
         user?.role?.name === 'superadmin' ||
         user?.role_id === 1;
