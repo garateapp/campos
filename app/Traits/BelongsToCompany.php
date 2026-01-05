@@ -11,16 +11,19 @@ trait BelongsToCompany
      */
     protected static function bootBelongsToCompany(): void
     {
-        // Auto-set company_id when creating a new record
-        static::creating(function ($model) {
-            if (auth()->check() && !$model->company_id) {
+        // Solo superadmins ven todas las compañías; admins siguen acotados.
+        $isSuperAdmin = auth()->check() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
+
+        // Auto-set company_id when creating a new record (only para no superadmins)
+        static::creating(function ($model) use ($isSuperAdmin) {
+            if (!$isSuperAdmin && auth()->check() && !$model->company_id) {
                 $model->company_id = auth()->user()->company_id;
             }
         });
 
-        // Add global scope to filter by company
-        static::addGlobalScope('company', function (Builder $builder) {
-            if (auth()->check() && auth()->user()->company_id) {
+        // Add global scope to filter by company (solo si no es superadmin)
+        static::addGlobalScope('company', function (Builder $builder) use ($isSuperAdmin) {
+            if (!$isSuperAdmin && auth()->check() && auth()->user()->company_id) {
                 $builder->where($builder->getModel()->getTable() . '.company_id', auth()->user()->company_id);
             }
         });

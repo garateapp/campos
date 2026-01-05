@@ -37,6 +37,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
         planted_date: new Date().toISOString().split('T')[0],
         expected_harvest_date: '',
         planted_area_hectares: '',
+        cc: '',
         plants_count: '',
         expected_yield_kg: '',
         notes: '',
@@ -134,7 +135,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="planted_area_hectares" value="Área Plantada (hectáreas) *" />
+                                    <InputLabel htmlFor="planted_area_hectares" value="Area Plantada (hectareas) *" />
                                     <TextInput
                                         id="planted_area_hectares"
                                         type="number"
@@ -147,6 +148,20 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                         required
                                     />
                                     <InputError message={errors.planted_area_hectares} className="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="cc" value="Centro de Costo" />
+                                    <TextInput
+                                        id="cc"
+                                        type="text"
+                                        name="cc"
+                                        value={data.cc}
+                                        className="mt-1 block w-full"
+                                        onChange={(e) => setData('cc', e.target.value)}
+                                        placeholder="Ej: CC-001"
+                                    />
+                                    <InputError message={errors.cc} className="mt-2" />
                                 </div>
                             </div>
 
@@ -238,3 +253,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
         </AuthenticatedLayout>
     );
 }
+
+
+
+

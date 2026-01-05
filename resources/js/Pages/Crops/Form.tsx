@@ -26,18 +26,25 @@ interface Family {
     species: Species[];
 }
 
+interface Field {
+    id: number;
+    name: string;
+}
+
 interface CropFormProps {
     crop: any;
     families: Family[];
+    fields: Field[];
 }
 
-export default function Form({ crop, families }: CropFormProps) {
+export default function Form({ crop, families, fields }: CropFormProps) {
     const isEditing = !!crop;
 
     const { data, setData, post, patch, processing, errors } = useForm({
+        field_id: crop?.field_id?.toString() || '',
         family_id: crop?.family_id?.toString() || '',
         species_id: crop?.species_id?.toString() || '',
-        variety_id: crop?.variety_id?.toString() || '',
+        variety_ids: (crop?.variety_ids || []).map((id: number | string) => id.toString()),
         name: crop?.name || '',
         variety: crop?.variety || '',
         scientific_name: crop?.scientific_name || '',
@@ -57,7 +64,7 @@ export default function Form({ crop, families }: CropFormProps) {
                 // Reset species and variety if not in the new family
                 if (!isEditing || data.family_id !== crop?.family_id?.toString()) {
                     if (!selectedFamily.species.some(s => s.id.toString() === data.species_id)) {
-                        setData(prev => ({ ...prev, species_id: '', variety_id: '' }));
+                        setData(prev => ({ ...prev, species_id: '', variety_ids: [] }));
                     }
                 }
             }
@@ -79,8 +86,10 @@ export default function Form({ crop, families }: CropFormProps) {
                     }
                 }
                 // Reset variety if it doesn't belong to the new species
-                if (!selectedSpecies.varieties.some(v => v.id.toString() === data.variety_id)) {
-                    setData('variety_id', '');
+                const current = Array.isArray(data.variety_ids) ? data.variety_ids : [];
+                const filtered = current.filter(vId => selectedSpecies.varieties.some(v => v.id.toString() === vId));
+                if (filtered.length !== current.length) {
+                    setData('variety_ids', filtered);
                 }
             }
         } else {
@@ -122,6 +131,23 @@ export default function Form({ crop, families }: CropFormProps) {
                                 </div>
 
                                 <div>
+                                    <InputLabel htmlFor="field_id" value="Parcela" />
+                                    <select
+                                        id="field_id"
+                                        name="field_id"
+                                        value={data.field_id}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
+                                        onChange={(e) => setData('field_id', e.target.value)}
+                                    >
+                                        <option value="">Seleccionar Parcela (Opcional)...</option>
+                                        {fields.map(field => (
+                                            <option key={field.id} value={field.id}>{field.name}</option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.field_id} className="mt-2" />
+                                </div>
+
+                                <div>
                                     <InputLabel htmlFor="family_id" value="Familia *" />
                                     <select
                                         id="family_id"
@@ -159,21 +185,22 @@ export default function Form({ crop, families }: CropFormProps) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="variety_id" value="Variedad" />
+                                    <InputLabel htmlFor="variety_ids" value="Variedades (una o mas)" />
                                     <select
-                                        id="variety_id"
-                                        name="variety_id"
-                                        value={data.variety_id}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
-                                        onChange={(e) => setData('variety_id', e.target.value)}
+                                        id="variety_ids"
+                                        name="variety_ids"
+                                        multiple
+                                        value={data.variety_ids}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500 min-h-[110px]"
+                                        onChange={(e) => setData('variety_ids', Array.from(e.target.selectedOptions, option => option.value))}
                                         disabled={!data.species_id}
                                     >
-                                        <option value="">Seleccionar Variedad...</option>
                                         {availableVarieties.map(v => (
                                             <option key={v.id} value={v.id}>{v.name}</option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.variety_id} className="mt-2" />
+                                    <p className="text-xs text-gray-500 mt-1">Selecciona una o varias variedades de la especie.</p>
+                                    <InputError message={errors.variety_ids} className="mt-2" />
                                 </div>
                             </div>
 

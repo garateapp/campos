@@ -9,6 +9,51 @@ export const getDB = async () => {
     return db;
 };
 
+// Danger: wipes all local data. Useful when user cambia de compañía para evitar mezclar registros.
+export const resetLocalData = async () => {
+    const database = await getDB();
+    const tables = [
+        'workers',
+        'contractors',
+        'cards',
+        'fields',
+        'species',
+        'varieties',
+        'harvest_containers',
+        'card_assignments',
+        'attendances',
+        'harvest_collections',
+        'crops',
+        'plantings',
+        'supplies',
+        'direct_costs',
+        'labor_plans',
+        'inputs',
+        'input_categories',
+        'task_types',
+        'labor_types',
+        'unit_of_measures',
+        'tasks',
+        'task_assignments',
+        'task_logs',
+        'costs',
+        'harvests',
+    ];
+
+    for (const table of tables) {
+        await database.execAsync(`DELETE FROM ${table};`);
+    }
+};
+
+const ensureColumn = async (table: string, column: string, definition: string) => {
+    const database = await getDB();
+    const info: any[] = await database.getAllAsync(`PRAGMA table_info(${table})`);
+    const exists = info.some((c) => c.name === column);
+    if (!exists) {
+        await database.execAsync(`ALTER TABLE ${table} ADD COLUMN ${definition};`);
+    }
+};
+
 export const initDB = async () => {
     const database = await getDB();
 
@@ -18,9 +63,14 @@ export const initDB = async () => {
       id INTEGER PRIMARY KEY,
       name TEXT,
       rut TEXT,
-      contractor_id INTEGER
+      contractor_id INTEGER,
+      is_identity_validated INTEGER DEFAULT 0,
+      synced INTEGER DEFAULT 0
     );
   `);
+
+    await ensureColumn('workers', 'is_identity_validated', 'is_identity_validated INTEGER DEFAULT 0');
+    await ensureColumn('workers', 'synced', 'synced INTEGER DEFAULT 0');
 
     // Cards
     await database.execAsync(`
@@ -41,6 +91,28 @@ export const initDB = async () => {
     // Species
     await database.execAsync(`
     CREATE TABLE IF NOT EXISTS species (
+        id INTEGER PRIMARY KEY,
+        name TEXT
+    );
+  `);
+
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS families (
+        id INTEGER PRIMARY KEY,
+        name TEXT
+    );
+  `);
+
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS varieties (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        species_id INTEGER
+    );
+  `);
+
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS contractors (
         id INTEGER PRIMARY KEY,
         name TEXT
     );
@@ -88,6 +160,188 @@ export const initDB = async () => {
         harvest_container_id INTEGER,
         quantity INTEGER,
         field_id INTEGER,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Crops catalog
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS crops (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        species TEXT,
+        species_id INTEGER,
+        variety TEXT,
+        variety_id INTEGER,
+        field_id INTEGER,
+        area REAL,
+        season TEXT,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    await ensureColumn('crops', 'species_id', 'species_id INTEGER');
+    await ensureColumn('crops', 'variety', 'variety TEXT');
+    await ensureColumn('crops', 'variety_id', 'variety_id INTEGER');
+
+    // Plantings register
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS plantings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        crop_name TEXT,
+        field_id INTEGER,
+        planting_date TEXT,
+        density INTEGER,
+        notes TEXT,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Supplies inventory
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS supplies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        unit TEXT,
+        quantity REAL,
+        unit_cost REAL,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Direct costs
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS direct_costs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        field_id INTEGER,
+        category TEXT,
+        amount REAL,
+        date TEXT,
+        notes TEXT,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Labor planning
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS labor_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        field_id INTEGER,
+        task TEXT,
+        scheduled_date TEXT,
+        workers_needed INTEGER,
+        hours REAL,
+        notes TEXT,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Input categories (web: input_categories)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS input_categories (
+        id INTEGER PRIMARY KEY,
+        name TEXT
+    );
+  `);
+
+    // Inputs (web: inputs)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS inputs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        unit TEXT,
+        current_stock REAL,
+        min_stock_alert REAL,
+        unit_cost REAL,
+        input_category_id INTEGER,
+        field_id INTEGER,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Task types (web: task_types)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS task_types (
+        id INTEGER PRIMARY KEY,
+        name TEXT
+    );
+  `);
+
+    // Labor types (web: labor_types)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS labor_types (
+        id INTEGER PRIMARY KEY,
+        name TEXT
+    );
+  `);
+
+    // Units of measure (web: unit_of_measures)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS unit_of_measures (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        code TEXT
+    );
+  `);
+
+    // Tasks (simplified)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        field_id INTEGER,
+        task_type_id INTEGER,
+        scheduled_date TEXT,
+        status TEXT,
+        notes TEXT,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Task assignments
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS task_assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER,
+        worker_id INTEGER,
+        hours REAL,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Task logs
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS task_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER,
+        description TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Costs (web: costs)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS costs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        field_id INTEGER,
+        planting_id INTEGER,
+        category TEXT,
+        amount REAL,
+        cost_date TEXT,
+        notes TEXT,
+        synced INTEGER DEFAULT 0
+    );
+  `);
+
+    // Harvests (web: harvests)
+    await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS harvests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        planting_id INTEGER,
+        field_id INTEGER,
+        quantity_kg REAL,
+        harvest_date TEXT,
         synced INTEGER DEFAULT 0
     );
   `);

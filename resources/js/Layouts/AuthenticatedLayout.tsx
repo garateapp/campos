@@ -11,6 +11,9 @@ export default function Authenticated({
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const user = usePage().props.auth.user;
+    const isSuperAdmin =
+        user?.role?.name === 'superadmin' ||
+        user?.role_id === 1;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -23,7 +26,7 @@ export default function Authenticated({
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
+                                    <ApplicationLogo className="block h-9" />
                                 </Link>
                             </div>
 
@@ -34,54 +37,59 @@ export default function Authenticated({
                                 >
                                     Dashboard
                                 </NavLink>
-                                <NavLink
-                                    href={route('fields.index')}
-                                    active={route().current('fields.*')}
-                                >
-                                    Parcelas
-                                </NavLink>
-                                <NavLink
-                                    href={route('field-mapping')}
-                                    active={route().current('field-mapping')}
-                                >
-                                    Mapa
-                                </NavLink>
-                                <NavLink
-                                    href={route('crops.index')}
-                                    active={route().current('crops.*')}
-                                >
-                                    Cultivos
-                                </NavLink>
-                                <NavLink
-                                    href={route('tasks.index')}
-                                    active={route().current('tasks.*')}
-                                >
-                                    Tareas
-                                </NavLink>
-                                <NavLink
-                                    href={route('inputs.index')}
-                                    active={route().current('inputs.*')}
-                                >
-                                    Inventario
-                                </NavLink>
-                                <NavLink
-                                    href={route('costs.index')}
-                                    active={route().current('costs.*')}
-                                >
-                                    Costos
-                                </NavLink>
-                                <NavLink
-                                    href={route('labor-plannings.index')}
-                                    active={route().current('labor-plannings.*')}
-                                >
-                                    Planificación
-                                </NavLink>
-                                <NavLink
-                                    href={route('card-assignments.index')}
-                                    active={route().current('card-assignments.*')}
-                                >
-                                    Asignación Tarjetas
-                                </NavLink>
+
+                                {/* Dropdown: Operacion */}
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out h-16">
+                                            <span>Operacion</span>
+                                            <svg className="ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content>
+                                        <Dropdown.Link href={route('fields.index')}>Parcelas</Dropdown.Link>
+                                        <Dropdown.Link href={route('crops.index')}>Cultivos</Dropdown.Link>
+                                        <Dropdown.Link href={route('field-mapping')}>Mapa</Dropdown.Link>
+                                        <Dropdown.Link href={route('tasks.index')}>Tareas</Dropdown.Link>
+                                        <Dropdown.Link href={route('plantings.index')}>Siembras</Dropdown.Link>
+                                    </Dropdown.Content>
+                                </Dropdown>
+
+                                {/* Dropdown: Gestion */}
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out h-16">
+                                            <span>Gestion</span>
+                                            <svg className="ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content>
+                                        <Dropdown.Link href={route('inputs.index')}>Inventario Insumos</Dropdown.Link>
+                                        <Dropdown.Link href={route('costs.index')}>Costos Directos</Dropdown.Link>
+                                        <Dropdown.Link href={route('labor-plannings.index')}>Planificacion Laboral</Dropdown.Link>
+                                        <Dropdown.Link href={route('profitability.index')}>Rentabilidad por Sector</Dropdown.Link>
+                                    </Dropdown.Content>
+                                </Dropdown>
+
+                                {/* Dropdown: Analisis */}
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out h-16">
+                                            <span>Analisis</span>
+                                            <svg className="ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content>
+                                        <Dropdown.Link href={route('reports.index')}>Reportes y Exportacion</Dropdown.Link>
+                                        <Dropdown.Link href={route('analytics.index')}>Analitica BI</Dropdown.Link>
+                                    </Dropdown.Content>
+                                </Dropdown>
 
                                 <div className="hidden sm:ms-6 sm:flex sm:items-center">
                                     <Dropdown>
@@ -91,7 +99,7 @@ export default function Authenticated({
                                                     type="button"
                                                     className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-6 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
                                                 >
-                                                    Administración
+                                                    Administracion
                                                     <svg
                                                         className="-me-0.5 ms-2 h-4 w-4"
                                                         xmlns="http://www.w3.org/2000/svg"
@@ -131,7 +139,7 @@ export default function Authenticated({
                                                 Maestro de Unidades de Medida
                                             </Dropdown.Link>
                                             <Dropdown.Link href={route('input-categories.index')}>
-                                                Maestro de Categorías (Insumos)
+                                                Maestro de Categorias (Insumos)
                                             </Dropdown.Link>
                                             <Dropdown.Link href={route('contractors.index')}>
                                                 Maestro de Contratistas
@@ -147,14 +155,28 @@ export default function Authenticated({
                                             </Dropdown.Link>
                                             <div className="border-t border-gray-100"></div>
                                             <Dropdown.Link href={route('card-assignments.index')}>
-                                                Asignación Tarjetas
+                                                Asignacion Tarjetas
                                             </Dropdown.Link>
                                             <Dropdown.Link href={route('attendance.index')}>
                                                 Asistencia
                                             </Dropdown.Link>
                                             <Dropdown.Link href={route('harvest-collection.index')}>
-                                                Recolección Cosecha
+                                                Recoleccion Cosecha
                                             </Dropdown.Link>
+                                            {isSuperAdmin && (
+                                                <>
+                                                    <div className="border-t border-gray-100"></div>
+                                                    <Dropdown.Link href={route('admin.users.index')}>
+                                                        Usuarios
+                                                    </Dropdown.Link>
+                                                    <Dropdown.Link href={route('admin.roles.index')}>
+                                                        Roles y Permisos
+                                                    </Dropdown.Link>
+                                                    <Dropdown.Link href={route('admin.companies.index')}>
+                                                        Companias
+                                                    </Dropdown.Link>
+                                                </>
+                                            )}
                                         </Dropdown.Content>
                                     </Dropdown>
                                 </div>
@@ -262,105 +284,54 @@ export default function Authenticated({
                         >
                             Dashboard
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('fields.index')}
-                            active={route().current('fields.*')}
-                        >
-                            Parcelas
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('field-mapping')}
-                            active={route().current('field-mapping')}
-                        >
-                            Mapa
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('crops.index')}
-                            active={route().current('crops.*')}
-                        >
-                            Cultivos
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('tasks.index')}
-                            active={route().current('tasks.*')}
-                        >
-                            Tareas
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('inputs.index')}
-                            active={route().current('inputs.*')}
-                        >
-                            Inventario
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('costs.index')}
-                            active={route().current('costs.*')}
-                        >
-                            Costos
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('labor-plannings.index')}
-                            active={route().current('labor-plannings.*')}
-                        >
-                            Planificación
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('card-assignments.index')}
-                            active={route().current('card-assignments.*')}
-                        >
-                            Asignación Tarjetas
-                        </ResponsiveNavLink>
 
                         <div className="pt-4 pb-1 border-t border-gray-100">
-                            <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Administración</div>
-                            <ResponsiveNavLink href={route('families.index')} active={route().current('families.*')}>
-                                Maestro de Familias
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('species.index')} active={route().current('species.*')}>
-                                Maestro de Especies
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('varieties.index')} active={route().current('varieties.*')}>
-                                Maestro de Variedades
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('soil-types.index')} active={route().current('soil-types.*')}>
-                                Maestro de Suelos
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('task-types.index')} active={route().current('task-types.*')}>
-                                Maestro de Tipos de Tarea
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('labor-types.index')} active={route().current('labor-types.*')}>
-                                Maestro de Tipos de Labor
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('unit-of-measures.index')} active={route().current('unit-of-measures.*')}>
-                                Maestro de Unidades de Medida
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('input-categories.index')} active={route().current('input-categories.*')}>
-                                Maestro de Categorías (Insumos)
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('contractors.index')} active={route().current('contractors.*')}>
-                                Maestro de Contratistas
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('workers.index')} active={route().current('workers.*')}>
-                                Maestro de Jornaleros
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('card-assignments.index')} active={route().current('card-assignments.index')}>
-                                Asignación Tarjetas
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('attendance.index')} active={route().current('attendance.index')}>
-                                Asistencia
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('harvest-collection.index')} active={route().current('harvest-collection.index')}>
-                                Recolección Cosecha
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('cards.index')} active={route().current('cards.*')}>
-                                Maestro de Tarjetas
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('harvest-containers.index')} active={route().current('harvest-containers.*')}>
-                                Envases de Cosecha
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('company.settings')} active={route().current('company.settings')}>
-                                Configuración Empresa
-                            </ResponsiveNavLink>
+                            <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Operacion</div>
+                            <ResponsiveNavLink href={route('fields.index')} active={route().current('fields.*')}>Parcelas</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('crops.index')} active={route().current('crops.*')}>Cultivos</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('field-mapping')} active={route().current('field-mapping')}>Mapa</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('tasks.index')} active={route().current('tasks.*')}>Tareas</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('plantings.index')} active={route().current('plantings.*')}>Siembras</ResponsiveNavLink>
+                        </div>
+
+                        <div className="pt-4 pb-1 border-t border-gray-100">
+                            <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Gestion Financiera</div>
+                            <ResponsiveNavLink href={route('inputs.index')} active={route().current('inputs.*')}>Inventario</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('costs.index')} active={route().current('costs.*')}>Costos</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('labor-plannings.index')} active={route().current('labor-plannings.*')}>Planificacion</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('profitability.index')} active={route().current('profitability.*')}>Rentabilidad</ResponsiveNavLink>
+                        </div>
+
+                        <div className="pt-4 pb-1 border-t border-gray-100">
+                            <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Inteligencia</div>
+                            <ResponsiveNavLink href={route('reports.index')} active={route().current('reports.*')}>Reportes</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('analytics.index')} active={route().current('analytics.*')}>Analitica BI</ResponsiveNavLink>
+                        </div>
+
+                        <div className="pt-4 pb-1 border-t border-gray-100">
+                            <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Administracion</div>
+                            <ResponsiveNavLink href={route('families.index')} active={route().current('families.*')}>Maestro de Familias</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('species.index')} active={route().current('species.*')}>Maestro de Especies</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('varieties.index')} active={route().current('varieties.*')}>Maestro de Variedades</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('soil-types.index')} active={route().current('soil-types.*')}>Maestro de Suelos</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('task-types.index')} active={route().current('task-types.*')}>Maestro de Tipos de Tarea</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('labor-types.index')} active={route().current('labor-types.*')}>Maestro de Tipos de Labor</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('unit-of-measures.index')} active={route().current('unit-of-measures.*')}>Maestro de Unidades de Medida</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('input-categories.index')} active={route().current('input-categories.*')}>Maestro de Categorias (Insumos)</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('contractors.index')} active={route().current('contractors.*')}>Maestro de Contratistas</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('workers.index')} active={route().current('workers.*')}>Maestro de Jornaleros</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('card-assignments.index')} active={route().current('card-assignments.*')}>Asignacion Tarjetas</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('attendance.index')} active={route().current('attendance.*')}>Asistencia</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('harvest-collection.index')} active={route().current('harvest-collection.*')}>Recoleccion Cosecha</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('cards.index')} active={route().current('cards.*')}>Maestro de Tarjetas</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('harvest-containers.index')} active={route().current('harvest-containers.*')}>Envases de Cosecha</ResponsiveNavLink>
+                            {isSuperAdmin && (
+                                <>
+                                    <ResponsiveNavLink href={route('admin.users.index')} active={route().current('admin.users.*')}>Usuarios</ResponsiveNavLink>
+                                    <ResponsiveNavLink href={route('admin.roles.index')} active={route().current('admin.roles.*')}>Roles y Permisos</ResponsiveNavLink>
+                                    <ResponsiveNavLink href={route('admin.companies.index')} active={route().current('admin.companies.*')}>Companias</ResponsiveNavLink>
+                                </>
+                            )}
                         </div>
                     </div>
 

@@ -22,6 +22,9 @@ use App\Http\Controllers\InputCategoryController;
 use App\Http\Controllers\TaskTypeController;
 use App\Http\Controllers\LaborTypeController;
 use App\Http\Controllers\UnitOfMeasureController;
+use App\Http\Controllers\AdminCompanyController;
+use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdminRoleController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -54,6 +57,20 @@ Route::middleware('auth')->prefix('company')->name('company.')->group(function (
 
 /*
 |--------------------------------------------------------------------------
+| Admin Routes (Auth + Verified + Admin role)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::resource('companies', AdminCompanyController::class)->only(['index', 'store', 'update']);
+        Route::resource('users', AdminUserController::class)->only(['index', 'store', 'update']);
+        Route::resource('roles', AdminRoleController::class)->only(['index', 'update']);
+    });
+
+/*
+|--------------------------------------------------------------------------
 | Protected Routes (Auth + Company required)
 |--------------------------------------------------------------------------
 */
@@ -76,6 +93,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::get('/field-mapping', [FieldController::class, 'mapping'])->name('field-mapping');
 
     // Crops (Cultivos)
+    Route::post('crops/import', [CropController::class, 'import'])->name('crops.import');
     Route::resource('crops', CropController::class);
     Route::resource('families', FamilyController::class);
     Route::resource('species', SpeciesController::class);
@@ -103,8 +121,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     
     Route::get('harvest-collection', [\App\Http\Controllers\HarvestCollectionController::class, 'index'])->name('harvest-collection.index');
     Route::post('harvest-collection', [\App\Http\Controllers\HarvestCollectionController::class, 'store'])->name('harvest-collection.store');
-
+    
     // Plantings (Siembras)
+    Route::post('plantings/import', [PlantingController::class, 'import'])->name('plantings.import');
     Route::resource('plantings', PlantingController::class);
     Route::post('/plantings/{planting}/activities', [PlantingController::class, 'storeActivity'])->name('plantings.activities.store');
     Route::post('/plantings/{planting}/harvests', [PlantingController::class, 'storeHarvest'])->name('plantings.harvests.store');
@@ -118,19 +137,32 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     // Inputs (Insumos)
     Route::resource('inputs', InputController::class);
     Route::post('/inputs/{input}/usage', [InputController::class, 'recordUsage'])->name('inputs.usage.store');
+    Route::post('/inputs/{input}/transfer', [InputController::class, 'transfer'])->name('inputs.transfer');
 
     // Costs (Costos)
     Route::resource('costs', CostController::class);
 
     // Labor Planning (Planificación de Labores)
+    Route::post('labor-plannings/import', [LaborPlanningController::class, 'import'])->name('labor-plannings.import');
     Route::resource('labor-plannings', LaborPlanningController::class);
+
+    // Financial Analysis
+    Route::get('/profitability', [\App\Http\Controllers\ProfitabilityController::class, 'index'])->name('profitability.index');
+
+    // Reports (Informes)
+    Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/harvest-logs', [\App\Http\Controllers\ReportController::class, 'harvestLogs'])->name('reports.harvest-logs');
+    Route::get('/reports/application-logs', [\App\Http\Controllers\ReportController::class, 'applicationLogs'])->name('reports.application-logs');
+
+    // Business Intelligence
+    Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
 
     // API endpoints for sync and hierarchy
     Route::prefix('api')->group(function () {
         Route::post('/sync', [TaskController::class, 'sync'])->name('api.sync');
         Route::get('/hierarchy', [FamilyController::class, 'hierarchy'])->name('api.hierarchy');
+        Route::post('/import/{type}', [\App\Http\Controllers\BulkImportController::class, 'import'])->name('api.import');
     });
 });
 
 require __DIR__.'/auth.php';
-

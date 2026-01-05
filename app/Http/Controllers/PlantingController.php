@@ -7,7 +7,12 @@ use App\Models\Crop;
 use App\Models\Field;
 use App\Models\Harvest;
 use App\Models\Planting;
+use App\Models\Species;
+use App\Models\Variety;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,6 +36,11 @@ class PlantingController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filter by crop
+        if ($request->has('crop_id')) {
+            $query->where('crop_id', $request->crop_id);
+        }
+
         $plantings = $query->orderByDesc('planted_date')->get()->map(fn ($p) => [
             'id' => $p->id,
             'field_name' => $p->field->name,
@@ -43,6 +53,7 @@ class PlantingController extends Controller
             'planted_date' => $p->planted_date->format('Y-m-d'),
             'expected_harvest_date' => $p->expected_harvest_date?->format('Y-m-d'),
             'planted_area_hectares' => $p->planted_area_hectares,
+            'cc' => $p->cc,
             'status' => $p->status,
             'expected_yield_kg' => $p->expected_yield_kg,
             'total_harvested_kg' => $p->harvests_sum_quantity_kg ?? 0,
@@ -54,8 +65,65 @@ class PlantingController extends Controller
         return Inertia::render('Plantings/Index', [
             'plantings' => $plantings,
             'seasons' => $seasons,
-            'filters' => $request->only(['season', 'status']),
+            'filters' => $request->only(['season', 'status', 'crop_id']),
         ]);
+    }
+
+    /**
+     * Import plantings from CSV using names.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt',
+        ]);
+
+        $companyId = auth()->user()->company_id;
+        $path = $request->file('file')->getRealPath();
+        Log::info('Plantings import: recibido archivo', [
+            'path' => $path,
+            'company_id' => $companyId,
+            'original_name' => $request->file('file')->getClientOriginalName(),
+            'size' => $request->file('file')->getSize(),
+        ]);
+
+        $rows = $this->readCsv($path);
+        Log::info('Plantings import: filas leidas', ['count' => $rows->count()]);
+
+        if ($rows->isEmpty()) {
+            return back()->with('error', 'El archivo esta vacio o no tiene filas.');
+        }
+
+        $errors = [];
+        $created = 0;
+        $total = $rows->count();
+        $allowedStatuses = ['plantado', 'creciendo', 'floreciendo', 'frutando', 'cosechando', 'completado', 'fallido'];
+
+        DB::beginTransaction();
+        try {
+            foreach ($rows as $index => $row) {
+                $rowNumber = $index + 2;
+                $result = $this->processImportRow($row, $companyId, $allowedStatuses);
+                if ($result['status'] === 'error') {
+                    $errors[] = "Fila {$rowNumber}: {$result['message']}";
+                    continue;
+                }
+                $created++;
+            }
+
+            if ($errors) {
+                DB::rollBack();
+                return back()->with('import_errors', $errors);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Plantings import: fallo inesperado', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Fallo inesperado: ' . $e->getMessage());
+        }
+
+        return back()->with('success', "Importacion de siembras exitosa. Creadas: {$created} de {$total}");
     }
 
     /**
@@ -84,12 +152,16 @@ class PlantingController extends Controller
             'planted_date' => 'required|date',
             'expected_harvest_date' => 'nullable|date|after:planted_date',
             'planted_area_hectares' => 'required|numeric|min:0.01',
+            'cc' => 'nullable|string|max:50',
             'plants_count' => 'nullable|integer|min:1',
             'expected_yield_kg' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        Planting::create($validated);
+        Planting::create([
+            'company_id' => auth()->user()->company_id,
+            ...$validated,
+        ]);
 
         return redirect()->route('plantings.index')->with('success', 'Siembra registrada exitosamente.');
     }
@@ -110,6 +182,7 @@ class PlantingController extends Controller
                 'planted_date' => $planting->planted_date->format('Y-m-d'),
                 'expected_harvest_date' => $planting->expected_harvest_date?->format('Y-m-d'),
                 'planted_area_hectares' => $planting->planted_area_hectares,
+                'cc' => $planting->cc,
                 'plants_count' => $planting->plants_count,
                 'status' => $planting->status,
                 'expected_yield_kg' => $planting->expected_yield_kg,
@@ -144,7 +217,10 @@ class PlantingController extends Controller
         $crops = Crop::orderBy('name')->get(['id', 'name', 'variety']);
 
         return Inertia::render('Plantings/Edit', [
-            'planting' => $planting,
+            'planting' => array_merge($planting->toArray(), [
+                'planted_date' => optional($planting->planted_date)->format('Y-m-d'),
+                'expected_harvest_date' => optional($planting->expected_harvest_date)->format('Y-m-d'),
+            ]),
             'fields' => $fields,
             'crops' => $crops,
         ]);
@@ -162,13 +238,17 @@ class PlantingController extends Controller
             'planted_date' => 'required|date',
             'expected_harvest_date' => 'nullable|date|after:planted_date',
             'planted_area_hectares' => 'required|numeric|min:0.01',
+            'cc' => 'nullable|string|max:50',
             'plants_count' => 'nullable|integer|min:1',
-            'status' => 'required|in:planted,growing,flowering,fruiting,harvesting,completed,failed',
+            'status' => 'required|in:plantado,creciendo,floreciendo,frutando,cosechando,completado,fallido',
             'expected_yield_kg' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $planting->update($validated);
+        $planting->update([
+            'company_id' => auth()->user()->company_id,
+            ...$validated,
+        ]);
 
         return redirect()->route('plantings.show', $planting)->with('success', 'Siembra actualizada.');
     }
@@ -181,6 +261,148 @@ class PlantingController extends Controller
         $planting->delete();
 
         return redirect()->route('plantings.index')->with('success', 'Siembra eliminada.');
+    }
+
+    private function processImportRow(array $row, int $companyId, array $allowedStatuses): array
+    {
+        $fieldName = trim($row['field_name'] ?? '');
+        $cropName = trim($row['crop_name'] ?? '');
+        $season = trim($row['season'] ?? '');
+        $plantedDate = trim($row['planted_date'] ?? '');
+        $expectedHarvest = trim($row['expected_harvest_date'] ?? '');
+        $area = trim($row['planted_area_hectares'] ?? '');
+        $cc = trim($row['cc'] ?? '');
+        $plantsCount = trim($row['plants_count'] ?? '');
+        $expectedYield = trim($row['expected_yield_kg'] ?? '');
+        $notes = trim($row['notes'] ?? '');
+        $status = trim($row['status'] ?? 'plantado');
+
+        if ($fieldName === '' || $cropName === '' || $season === '' || $plantedDate === '' || $area === '') {
+            return ['status' => 'error', 'message' => 'field_name, crop_name, season, planted_date y planted_area_hectares son obligatorios'];
+        }
+
+        $field = $this->findByName(Field::class, $fieldName, $companyId);
+        if (!$field) {
+            return ['status' => 'error', 'message' => "Campo '{$fieldName}' no encontrado"];
+        }
+
+        $crop = $this->findByName(Crop::class, $cropName, $companyId);
+        if (!$crop) {
+            return ['status' => 'error', 'message' => "Cultivo '{$cropName}' no encontrado"];
+        }
+
+        if (!in_array($status, $allowedStatuses)) {
+            return ['status' => 'error', 'message' => "Estado '{$status}' no valido"];
+        }
+
+        $plantedAt = $this->parseDate($plantedDate, 'planted_date');
+        if ($plantedAt === false) {
+            return ['status' => 'error', 'message' => "Fecha de siembra invalida: {$plantedDate}"];
+        }
+
+        $expectedAt = null;
+        if ($expectedHarvest !== '') {
+            $expectedAt = $this->parseDate($expectedHarvest, 'expected_harvest_date');
+            if ($expectedAt === false) {
+                return ['status' => 'error', 'message' => "Fecha esperada de cosecha invalida: {$expectedHarvest}"];
+            }
+        }
+
+        if (!is_numeric($area)) {
+            return ['status' => 'error', 'message' => 'planted_area_hectares debe ser numerico'];
+        }
+
+        if ($plantsCount !== '' && !is_numeric($plantsCount)) {
+            return ['status' => 'error', 'message' => 'plants_count debe ser numerico'];
+        }
+
+        if ($expectedYield !== '' && !is_numeric($expectedYield)) {
+            return ['status' => 'error', 'message' => 'expected_yield_kg debe ser numerico'];
+        }
+
+        Planting::create([
+            'company_id' => $companyId,
+            'field_id' => $field->id,
+            'crop_id' => $crop->id,
+            'season' => $season,
+            'planted_date' => $plantedAt,
+            'expected_harvest_date' => $expectedAt ?: null,
+            'planted_area_hectares' => (float) $area,
+            'cc' => $cc ?: null,
+            'plants_count' => $plantsCount !== '' ? (int) $plantsCount : null,
+            'status' => $status,
+            'expected_yield_kg' => $expectedYield !== '' ? (float) $expectedYield : null,
+            'notes' => $notes ?: null,
+        ]);
+
+        return ['status' => 'ok'];
+    }
+
+    private function readCsv(string $path)
+    {
+        $handle = fopen($path, 'r');
+        if ($handle === false) {
+            return collect();
+        }
+
+        $firstLine = fgets($handle);
+        if ($firstLine === false) {
+            fclose($handle);
+            return collect();
+        }
+        $delimiter = $this->detectDelimiter($firstLine);
+        rewind($handle);
+
+        $rows = collect();
+        $headers = null;
+        while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+            if ($headers === null) {
+                $headers = array_map(function ($h) {
+                    $h = trim($h);
+                    return preg_replace('/^\xEF\xBB\xBF/', '', $h);
+                }, $data);
+                continue;
+            }
+            if (count(array_filter($data, fn ($v) => trim((string) $v) !== '')) === 0) {
+                continue;
+            }
+            $row = [];
+            foreach ($headers as $i => $header) {
+                $row[$header] = $data[$i] ?? '';
+            }
+            $rows->push($row);
+        }
+        fclose($handle);
+
+        return $rows;
+    }
+
+    private function detectDelimiter(string $line): string
+    {
+        $commaCount = substr_count($line, ',');
+        $semicolonCount = substr_count($line, ';');
+        return $semicolonCount > $commaCount ? ';' : ',';
+    }
+
+    private function parseDate(string $value, string $field)
+    {
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function findByName(string $model, string $name, int $companyId)
+    {
+        return $model::where(function ($q) use ($name) {
+            $q->whereRaw('LOWER(name) = ?', [mb_strtolower($name)]);
+        })
+            ->where(function ($q) use ($companyId) {
+                $q->where('company_id', $companyId)
+                    ->orWhereNull('company_id');
+            })
+            ->first();
     }
 
     /**

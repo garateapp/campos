@@ -100,7 +100,15 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        return $this->role && $this->role->name === 'admin';
+        return $this->role && in_array($this->role->name, ['admin', 'superadmin'], true);
+    }
+
+    /**
+     * Check if user is super admin (gestiona todas las compañías).
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role && $this->role->name === 'superadmin';
     }
 
     /**

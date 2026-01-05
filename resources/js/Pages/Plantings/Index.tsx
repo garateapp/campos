@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 
@@ -14,6 +14,7 @@ interface Planting {
     status: string;
     total_harvested_kg: number;
     planted_area_hectares: number;
+    cc?: string | null;
 }
 
 interface PlantingsIndexProps {
@@ -38,6 +39,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 export default function Index({ plantings, seasons, filters }: PlantingsIndexProps) {
     const [seasonFilter, setSeasonFilter] = useState(filters.season || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
+    const { flash, errors } = usePage().props as any;
 
     const handleFilterChange = (key: string, value: string) => {
         const newFilters = { ...filters, [key]: value || undefined };
@@ -59,12 +61,32 @@ export default function Index({ plantings, seasons, filters }: PlantingsIndexPro
                             Seguimiento de cultivos por parcela y temporada
                         </p>
                     </div>
-                    <Link
-                        href={route('plantings.create')}
-                        className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
-                    >
-                        + Nueva Siembra
-                    </Link>
+                    <div className="flex gap-3">
+                        <label className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 cursor-pointer">
+                            Importar CSV
+                            <input
+                                type="file"
+                                accept=".csv,text/csv"
+                                className="hidden"
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        const file = e.target.files[0];
+                                        router.post(route('plantings.import'), { file }, {
+                                            forceFormData: true,
+                                            onFinish: () => { e.target.value = ''; }
+                                        });
+                                    }
+                                }}
+                            />
+                        </label>
+                        {errors?.file && <div className="text-xs text-red-600 self-center">{errors.file}</div>}
+                        <Link
+                            href={route('plantings.create')}
+                            className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
+                        >
+                            + Nueva Siembra
+                        </Link>
+                    </div>
                 </div>
             }
         >
@@ -72,6 +94,23 @@ export default function Index({ plantings, seasons, filters }: PlantingsIndexPro
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {(flash?.success || flash?.error || flash?.import_errors) && (
+                        <div className="mb-4 space-y-2">
+                            {flash?.success && <div className="p-3 rounded bg-green-100 text-green-800 text-sm">{flash.success}</div>}
+                            {flash?.error && <div className="p-3 rounded bg-red-100 text-red-800 text-sm">{flash.error}</div>}
+                            {flash?.import_errors && Array.isArray(flash.import_errors) && (
+                                <div className="p-3 rounded bg-yellow-100 text-yellow-800 text-sm">
+                                    <div className="font-semibold mb-1">Errores de importacion:</div>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        {flash.import_errors.map((err: string, idx: number) => (
+                                            <li key={idx}>{err}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Filters */}
                     <div className="mb-6 flex flex-wrap gap-4">
                         <div className="w-full sm:w-48">
@@ -151,6 +190,10 @@ export default function Index({ plantings, seasons, filters }: PlantingsIndexPro
                                                 <span className="font-medium text-gray-900">{p.field_name}</span>
                                             </div>
                                             <div className="flex items-center text-sm">
+                                                <span className="text-gray-500 w-24"> CC:</span>
+                                                <span className="font-medium text-gray-900">{p.cc || "-"}</span>
+                                            </div>
+                                            <div className="flex items-center text-sm">
                                                 <span className="text-gray-500 w-24">📅 Fecha:</span>
                                                 <span className="font-medium text-gray-900">{p.planted_date}</span>
                                             </div>
@@ -182,3 +225,5 @@ export default function Index({ plantings, seasons, filters }: PlantingsIndexPro
         </AuthenticatedLayout>
     );
 }
+
+

@@ -152,7 +152,11 @@ export default function Show({ planting }: PlantingShowProps) {
                                         <dl className="space-y-3">
                                             <DetailItem label="Familia" value={planting.crop.species?.family?.name || 'No especificada'} />
                                             <DetailItem label="Especie" value={planting.crop.species?.name || 'No especificada'} />
-                                            <DetailItem label="Variedad" value={planting.crop.variety || 'No especificada'} />
+                                            <DetailItem
+                                                label="Variedad"
+                                                value={(planting.crop.variety_entity?.name as string) || planting.crop.variety || 'No especificada'}
+                                            />
+                                            <DetailItem label="Centro de Costo" value={(planting as any).cc || '-'} />
                                             <DetailItem label="Nombre Científico" value={planting.crop.scientific_name || '-'} />
                                             <DetailItem label="Cantidad de Plantas" value={planting.plants_count?.toString() || '-'} />
                                             <DetailItem label="Fecha Est. Cosecha" value={planting.expected_harvest_date || 'No definida'} />

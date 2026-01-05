@@ -6,6 +6,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
+import BulkUploadButton from '@/Components/BulkUploadButton';
 
 interface Species {
     id: number;
@@ -82,9 +83,12 @@ export default function Index({ varieties, species }: Props) {
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
                         Maestro de Variedades
                     </h2>
-                    <PrimaryButton onClick={() => openModal()}>
-                        + Nueva Variedad
-                    </PrimaryButton>
+                    <div className="flex items-center gap-2">
+                        <BulkUploadButton type="varieties" />
+                        <PrimaryButton onClick={() => openModal()}>
+                            + Nueva Variedad
+                        </PrimaryButton>
+                    </div>
                 </div>
             }
         >

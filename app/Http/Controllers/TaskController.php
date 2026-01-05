@@ -78,7 +78,7 @@ class TaskController extends Controller
             ->get()
             ->map(fn ($p) => [
                 'id' => $p->id,
-                'label' => "{$p->crop->name} - {$p->field->name} ({$p->season})",
+                'label' => "{$p->crop->name} - {$p->field->name} - CC:{$p->cc} ({$p->season})",
                 'field_id' => $p->field_id,
             ]);
         $users = User::where('company_id', auth()->user()->company_id)
@@ -390,7 +390,7 @@ class TaskController extends Controller
 
             if ($operation['entity'] === 'task_log') {
                 $data = $operation['data'];
-                
+
                 $task = Task::find($data['task_id']);
                 if (!$task) {
                     $results[] = [

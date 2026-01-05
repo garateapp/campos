@@ -21,6 +21,7 @@ class Planting extends Model
         'planted_date',
         'expected_harvest_date',
         'planted_area_hectares',
+        'cc',
         'plants_count',
         'status',
         'expected_yield_kg',

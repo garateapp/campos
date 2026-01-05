@@ -38,6 +38,14 @@ class Field extends Model
     }
 
     /**
+     * Get crops for this field.
+     */
+    public function crops(): HasMany
+    {
+        return $this->hasMany(Crop::class);
+    }
+
+    /**
      * Get plantings for this field.
      */
     public function plantings(): HasMany

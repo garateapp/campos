@@ -3,12 +3,14 @@ import { StyleSheet, Text, View, Button } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 
 interface ScannerProps {
-    onScanned: (data: string) => void;
+    onScanned: (data: string, type?: string) => void;
     onClose: () => void;
+    showDebug?: boolean;
 }
 
-export default function Scanner({ onScanned, onClose }: ScannerProps) {
+export default function Scanner({ onScanned, onClose, showDebug = false }: ScannerProps) {
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const [last, setLast] = useState<{ data: string; type?: string } | null>(null);
 
     useEffect(() => {
         const getPermissions = async () => {
@@ -30,12 +32,25 @@ export default function Scanner({ onScanned, onClose }: ScannerProps) {
             <CameraView
                 style={styles.camera}
                 facing="back"
-                onBarcodeScanned={({ data }) => {
-                    onScanned(data);
+                barcodeScannerSettings={{
+                    barcodeTypes: ['pdf417', 'qr', 'code128', 'code39', 'ean13', 'ean8', 'upc_a', 'upc_e'],
+                }}
+                onBarcodeScanned={({ data, type }) => {
+                    if (showDebug) {
+                        console.log('[Scanner] barcode type:', type, 'data:', data);
+                        setLast({ data, type });
+                    }
+                    onScanned(data, type);
                 }}
             />
             <View style={styles.overlay}>
                 <Button title="Close Scanner" onPress={onClose} />
+                {showDebug && last ? (
+                    <View style={styles.debugBox}>
+                        <Text style={{ color: 'white', fontSize: 12 }}>Last: {last.type || 'n/a'}</Text>
+                        <Text style={{ color: 'white', fontSize: 12 }}>{last.data}</Text>
+                    </View>
+                ) : null}
             </View>
         </View>
     );
@@ -57,5 +72,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: 20,
-    }
+    },
+    debugBox: {
+        marginTop: 8,
+        padding: 8,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 8,
+    },
 });

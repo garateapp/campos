@@ -196,4 +196,55 @@ class InputController extends Controller
 
         return redirect()->back()->with('success', 'Uso registrado.');
     }
+
+    /**
+     * Transfer an input to another field (parcela).
+     */
+    public function transfer(Request $request, Input $input)
+    {
+        $validated = $request->validate([
+            'field_id' => 'nullable|exists:fields,id',
+            'quantity' => 'required|numeric|min:0.01',
+        ]);
+
+        $destinationFieldId = $validated['field_id'] ?? null;
+        $quantity = (float) $validated['quantity'];
+
+        // Si no cambia, no hacemos nada
+        if ($destinationFieldId === $input->field_id) {
+            return redirect()->back()->with('warning', 'El insumo ya está en esa parcela.');
+        }
+
+        if ($quantity > $input->current_stock) {
+            return redirect()->back()->with('error', 'Stock insuficiente para mover esa cantidad.');
+        }
+
+        // Buscar si ya existe un insumo equivalente en el destino (mismo nombre/unidad/categoría)
+        $destinationInput = Input::where('company_id', $input->company_id)
+            ->where('field_id', $destinationFieldId)
+            ->where('name', $input->name)
+            ->where('unit', $input->unit)
+            ->where('input_category_id', $input->input_category_id)
+            ->first();
+
+        if (!$destinationInput) {
+            $destinationInput = Input::create([
+                'company_id' => $input->company_id,
+                'field_id' => $destinationFieldId,
+                'input_category_id' => $input->input_category_id,
+                'name' => $input->name,
+                'unit' => $input->unit,
+                'current_stock' => 0,
+                'min_stock_alert' => $input->min_stock_alert,
+                'unit_cost' => $input->unit_cost,
+                'notes' => $input->notes,
+            ]);
+        }
+
+        // Actualizar stocks
+        $input->decrement('current_stock', $quantity);
+        $destinationInput->increment('current_stock', $quantity);
+
+        return redirect()->back()->with('success', 'Insumo movido a la nueva parcela.');
+    }
 }

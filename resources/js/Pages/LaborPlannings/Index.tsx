@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 import { analyzeWorkVideo } from '@/Services/geminiService';
@@ -8,8 +8,17 @@ interface LaborPlanning {
     year: number;
     month: number;
     field?: { id: number; name: string };
+    planting?: {
+        crop?: {
+            name: string;
+            species?: { id: number; name: string };
+            varietyEntity?: { id: number; name: string };
+            variety?: string | null;
+            varieties?: { id: number; name: string }[];
+        };
+    };
     species?: { id: number; name: string };
-    variety?: { id: number; name: string };
+    varieties?: { id: number; name: string }[];
     planting_year: number | null;
     cc: string | null;
     hectares: number | null;
@@ -56,6 +65,7 @@ export default function Index({ plannings, filters, summary }: IndexProps) {
     const [month, setMonth] = useState(filters.month);
     const [isAuditing, setIsAuditing] = useState(false);
     const [auditResult, setAuditResult] = useState<string | null>(null);
+    const { flash, errors } = usePage().props as any;
 
     const handleFilter = (newYear: number, newMonth: number) => {
         router.get(route('labor-plannings.index'), { year: newYear, month: newMonth }, {
@@ -103,8 +113,26 @@ export default function Index({ plannings, filters, summary }: IndexProps) {
                             disabled={isAuditing}
                             className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition ease-in-out duration-150 disabled:opacity-50"
                         >
-                            {isAuditing ? 'Auditando...' : '✨ Auditoría IA'}
+                            {isAuditing ? 'Auditando...' : 'Auditoría IA'}
                         </button>
+                        <label className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 cursor-pointer">
+                            Importar CSV
+                            <input
+                                type="file"
+                                accept=".csv,text/csv"
+                                className="hidden"
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        const file = e.target.files[0];
+                                        router.post(route('labor-plannings.import'), { file }, {
+                                            forceFormData: true,
+                                            onFinish: () => { e.target.value = ''; },
+                                        });
+                                    }
+                                }}
+                            />
+                        </label>
+                        {errors?.file && <div className="text-xs text-red-600 self-center">{errors.file}</div>}
                         <Link
                             href={route('labor-plannings.create')}
                             className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
@@ -119,6 +147,23 @@ export default function Index({ plannings, filters, summary }: IndexProps) {
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+                    {(flash?.success || flash?.error || flash?.import_errors) && (
+                        <div className="mb-4 space-y-2">
+                            {flash?.success && <div className="p-3 rounded bg-green-100 text-green-800 text-sm">{flash.success}</div>}
+                            {flash?.error && <div className="p-3 rounded bg-red-100 text-red-800 text-sm">{flash.error}</div>}
+                            {flash?.import_errors && Array.isArray(flash.import_errors) && (
+                                <div className="p-3 rounded bg-yellow-100 text-yellow-800 text-sm">
+                                    <div className="font-semibold mb-1">Errores de importacion:</div>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        {flash.import_errors.map((err: string, idx: number) => (
+                                            <li key={idx}>{err}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -171,7 +216,7 @@ export default function Index({ plannings, filters, summary }: IndexProps) {
                     {/* AI Audit Result */}
                     {auditResult && (
                         <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-xl mb-6 shadow-sm relative animate-in fade-in slide-in-from-top-4 duration-500">
-                            <button onClick={() => setAuditResult(null)} className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-600 transition-colors">✕</button>
+                            <button onClick={() => setAuditResult(null)} className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-600 transition-colors">×</button>
                             <div className="flex items-center gap-2 mb-3 text-indigo-700">
                                 <span className="material-symbols-outlined font-black">smart_toy</span>
                                 <h3 className="font-bold text-sm uppercase tracking-widest">Resultado de Auditoría IA</h3>
@@ -209,16 +254,26 @@ export default function Index({ plannings, filters, summary }: IndexProps) {
                                             </td>
                                         </tr>
                                     ) : (
+
                                         plannings.map((p) => (
+
                                             <tr key={p.id} className="hover:bg-gray-50">
                                                 <td className="px-3 py-4 whitespace-nowrap">
                                                     <div className="text-sm font-medium text-gray-900">{p.field?.name || 'N/A'}</div>
-                                                    <div className="text-xs text-gray-900 font-bold">{p.taskType?.name}</div>
-                                                    <div className="text-[10px] text-gray-500 uppercase">{p.laborType?.name}</div>
+                                                    <div className="text-xs text-gray-900 font-bold">{p.task_type?.name}</div>
+                                                    <div className="text-[10px] text-gray-500 uppercase">{p.labor_type?.name}</div>
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
-                                                    <div className="text-xs font-medium text-gray-900">{p.species?.name || 'N/A'}</div>
-                                                    <div className="text-[10px] text-gray-500">{p.variety?.name || 'N/A'}</div>
+                                                    <div className="text-xs font-medium text-gray-900">
+                                                        {p.planting?.crop?.species?.name || p.species?.name || 'N/A'}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-500">
+                                                        {p.planting?.crop?.varietyEntity?.name
+                                                            || (p.planting?.crop?.varieties?.length ? p.planting.crop.varieties.map(v => v.name).join(', ') : '')
+                                                            || (p.varieties?.length ? p.varieties.map(v => v.name).join(', ') : '')
+                                                            || p.planting?.crop?.variety
+                                                            || 'N/A'}
+                                                    </div>
                                                 </td>
                                                 {/* Planned */}
                                                 <td className="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-blue-700 bg-blue-50/10">
@@ -252,7 +307,7 @@ export default function Index({ plannings, filters, summary }: IndexProps) {
                                                             onClick={() => handleDelete(p.id, p.taskType?.name || 'Labor')}
                                                             className="text-red-400 hover:text-red-700"
                                                         >
-                                                            🗑️
+                                                            Eliminar
                                                         </button>
                                                     </div>
                                                 </td>

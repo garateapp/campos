@@ -14,7 +14,7 @@ export default function Welcome({
                 <div className="relative w-full max-w-2xl px-6 lg:max-w-7xl">
                     <header className="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3">
                         <div className="flex lg:col-start-2 lg:justify-center">
-                            <ApplicationLogo className="h-24 w-auto" />
+                            <ApplicationLogo />
                         </div>
                         <nav className="-mx-3 flex flex-1 justify-end">
                             {auth.user ? (

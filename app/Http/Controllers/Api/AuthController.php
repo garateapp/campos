@@ -9,23 +9,44 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
+    /**
+     * Issue an API token for a valid user.
+     */
     public function login(Request $request)
     {
-        $credentials = $request->validate([
+        $request->validate([
             'email' => 'required|email',
             'password' => 'required',
+            'device_name' => 'required',
         ]);
 
-        if (Auth::attempt($credentials)) {
-            $user = User::where('email', $request->email)->first();
-            $token = $user->createToken('mobile-app')->plainTextToken;
-
+        if (!Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
-                'token' => $token,
-                'user' => $user,
-            ]);
+                'message' => 'Credenciales incorrectas.',
+            ], 401);
         }
 
-        return response()->json(['message' => 'Invalid credentials'], 401);
+        $user = User::where('email', $request->email)->firstOrFail();
+
+        // Check if user belongs to a company
+        if (!$user->company_id) {
+            return response()->json([
+                'message' => 'Usuario no asociado a una empresa activa.',
+            ], 403);
+        }
+
+        // Create token with ability to access everything for now, or scope it
+        $token = $user->createToken($request->device_name)->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'company_id' => $user->company_id,
+            ]
+        ]);
     }
 }

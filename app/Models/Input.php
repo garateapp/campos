@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -35,7 +36,7 @@ class Input extends Model
     /**
      * Get the field this input belongs to (if any).
      */
-    public function field(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function field(): BelongsTo
     {
         return $this->belongsTo(Field::class);
     }
@@ -43,7 +44,15 @@ class Input extends Model
     /**
      * Get the category of this input.
      */
-    public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(InputCategory::class, 'input_category_id');
+    }
+
+    /**
+     * Alias para compatibilidad (inputCategory).
+     */
+    public function inputCategory(): BelongsTo
     {
         return $this->belongsTo(InputCategory::class, 'input_category_id');
     }

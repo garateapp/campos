@@ -1,25 +1,34 @@
 import { Head, useForm, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import React, { FormEventHandler } from 'react';
+import React from 'react';
 
 interface Props {
     fields: { id: number; name: string }[];
-    species: { id: number; name: string }[];
-    varieties: { id: number; name: string; species_id: number }[];
+    plantings: {
+        id: number;
+        label: string;
+        field_id: number;
+        species_id?: number | null;
+        variety_id?: number | null;
+        cc?: string | null;
+        hectares?: number | null;
+        num_plants?: number | null;
+        season?: string | null;
+    }[];
     taskTypes: { id: number; name: string }[];
     laborTypes: { id: number; name: string }[];
     units: { id: number; name: string; code?: string }[];
 }
 
-// Add query params support
 interface CreateProps extends Props {
     initialData?: {
         year?: number;
         month?: number;
         field_id?: string;
         species_id?: string;
-        variety_id?: string;
+        variety_ids?: string[];
         planting_year?: string;
+        planting_id?: string;
         cc?: string;
         hectares?: string;
         num_plants?: string;
@@ -27,13 +36,14 @@ interface CreateProps extends Props {
     };
 }
 
-export default function Create({ fields, species, varieties, taskTypes, laborTypes, units, initialData = {} }: CreateProps) {
+export default function Create({ fields, plantings, taskTypes, laborTypes, units, initialData = {} }: CreateProps) {
     const { data, setData, post, processing, errors } = useForm({
         year: initialData.year || new Date().getFullYear(),
         month: initialData.month || new Date().getMonth() + 1,
         field_id: initialData.field_id || '',
+        planting_id: initialData.planting_id || '',
         species_id: initialData.species_id || '',
-        variety_id: initialData.variety_id || '',
+        variety_ids: initialData.variety_ids || [],
         planting_year: initialData.planting_year || '',
         cc: initialData.cc || '',
         hectares: initialData.hectares || '',
@@ -56,21 +66,29 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
         e.preventDefault();
         data.create_another = createAnother;
         post(route('labor-plannings.store'), {
-            onFinish: () => {
-                // If creating another, the page reload will reset state via initialData, 
-                // but we manually ensure create_another is false for safety if spa navigation happens
-                setData('create_another', false);
-            }
+            onFinish: () => setData('create_another', false),
         });
     };
 
-    const filteredVarieties = varieties.filter(v => v.species_id === Number(data.species_id));
+    const handlePlantingSelect = (plantingId: string) => {
+        setData('planting_id', plantingId);
+        if (!plantingId) return;
+        const selected = plantings.find((p) => p.id.toString() === plantingId);
+        if (selected) {
+            if (selected.field_id) setData('field_id', selected.field_id.toString());
+            if (selected.species_id) setData('species_id', selected.species_id.toString());
+            if (selected.variety_id) setData('variety_ids', [selected.variety_id.toString()]);
+            if (selected.cc) setData('cc', selected.cc);
+            if (selected.hectares) setData('hectares', selected.hectares.toString());
+            if (selected.num_plants) setData('num_plants', selected.num_plants.toString());
+            if (selected.season) setData('planting_year', selected.season.split('-')[0]);
+        }
+    };
 
-    // Dynamic Total Calculation
     React.useEffect(() => {
         if (!data.labor_type_id) return;
 
-        const laborType = laborTypes.find(lt => lt.id === Number(data.labor_type_id));
+        const laborType = laborTypes.find((lt) => lt.id === Number(data.labor_type_id));
         if (!laborType) return;
 
         const name = laborType.name.toLowerCase();
@@ -80,16 +98,14 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
         if (name.includes('trato')) {
             const plants = Number(data.num_plants) || 0;
             total = plants * val;
-        } else if (name.includes('día') || name.includes('dia')) {
+        } else if (name.includes('d¡a') || name.includes('dia')) {
             const jh = Number(data.total_jh_planned) || 0;
             total = jh * val;
         }
 
-        // If total calculated, update state
         if (total > 0) {
             setData('total_value_planned', total.toFixed(2));
         }
-
     }, [data.labor_type_id, data.num_plants, data.total_jh_planned, data.value_planned]);
 
     return (
@@ -112,8 +128,6 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <form onSubmit={(e) => submit(e, false)} className="p-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                                {/* Period & Location */}
                                 <div className="md:col-span-3 border-b pb-2 mb-2">
                                     <h3 className="font-bold text-gray-800 uppercase text-xs">Periodo y Ubicación</h3>
                                 </div>
@@ -138,8 +152,23 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                         required
                                     >
-                                        {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                                            <option key={i + 1} value={i + 1}>{m}</option>
+                                        {[
+                                            'Enero',
+                                            'Febrero',
+                                            'Marzo',
+                                            'Abril',
+                                            'Mayo',
+                                            'Junio',
+                                            'Julio',
+                                            'Agosto',
+                                            'Septiembre',
+                                            'Octubre',
+                                            'Noviembre',
+                                            'Diciembre',
+                                        ].map((m, i) => (
+                                            <option key={i + 1} value={i + 1}>
+                                                {m}
+                                            </option>
                                         ))}
                                     </select>
                                     {errors.month && <div className="text-red-500 text-xs mt-1">{errors.month}</div>}
@@ -153,81 +182,37 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                     >
                                         <option value="">Seleccione Sector</option>
-                                        {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                        {fields.map((f) => (
+                                            <option key={f.id} value={f.id}>
+                                                {f.name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 
-                                {/* Crop info */}
                                 <div className="md:col-span-3 border-b pb-2 mb-2 mt-4">
                                     <h3 className="font-bold text-gray-800 uppercase text-xs">Datos del Cultivo</h3>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Especie</label>
+                                    <label className="block text-sm font-medium text-gray-700">Siembra (opcional)</label>
                                     <select
-                                        value={data.species_id}
-                                        onChange={(e) => setData('species_id', e.target.value)}
+                                        value={data.planting_id}
+                                        onChange={(e) => handlePlantingSelect(e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                     >
-                                        <option value="">Seleccione Especie</option>
-                                        {species.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        <option value="">Sin seleccionar</option>
+                                        {plantings.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.label}
+                                            </option>
+                                        ))}
                                     </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Si corresponde a una siembra, selecciónala para autocompletar datos.
+                                    </p>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Variedad</label>
-                                    <select
-                                        value={data.variety_id}
-                                        onChange={(e) => setData('variety_id', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                                        disabled={!data.species_id}
-                                    >
-                                        <option value="">Seleccione Variedad</option>
-                                        {filteredVarieties.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Año Plantación</label>
-                                    <input
-                                        type="number"
-                                        value={data.planting_year}
-                                        onChange={(e) => setData('planting_year', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Centro de Costo (CC)</label>
-                                    <input
-                                        type="text"
-                                        value={data.cc}
-                                        onChange={(e) => setData('cc', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Hectáreas (Há)</label>
-                                    <input
-                                        type="number" step="0.01"
-                                        value={data.hectares}
-                                        onChange={(e) => setData('hectares', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">N° Plantas</label>
-                                    <input
-                                        type="number"
-                                        value={data.num_plants}
-                                        onChange={(e) => setData('num_plants', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                                    />
-                                </div>
-
-                                {/* Labor Details */}
                                 <div className="md:col-span-3 border-b pb-2 mb-2 mt-4">
                                     <h3 className="font-bold text-gray-800 uppercase text-xs">Detalles de la Labor</h3>
                                 </div>
@@ -241,7 +226,11 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                         required
                                     >
                                         <option value="">Seleccione Labor</option>
-                                        {taskTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                        {taskTypes.map((t) => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.name}
+                                            </option>
+                                        ))}
                                     </select>
                                     {errors.task_type_id && <div className="text-red-500 text-xs mt-1">{errors.task_type_id}</div>}
                                 </div>
@@ -255,15 +244,20 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                         required
                                     >
                                         <option value="">Seleccione Tipo</option>
-                                        {laborTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                        {laborTypes.map((t) => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.name}
+                                            </option>
+                                        ))}
                                     </select>
                                     {errors.labor_type_id && <div className="text-red-500 text-xs mt-1">{errors.labor_type_id}</div>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">N° JH (Jornada Hombre)</label>
+                                    <label className="block text-sm font-medium text-gray-700">Nø JH (Jornada Hombre)</label>
                                     <input
-                                        type="number" step="0.01"
+                                        type="number"
+                                        step="0.01"
                                         value={data.num_jh_planned}
                                         onChange={(e) => setData('num_jh_planned', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
@@ -273,7 +267,8 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Rendimiento Promedio</label>
                                     <input
-                                        type="number" step="0.01"
+                                        type="number"
+                                        step="0.01"
                                         value={data.avg_yield_planned}
                                         onChange={(e) => setData('avg_yield_planned', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
@@ -288,14 +283,19 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                     >
                                         <option value="">Seleccione Unidad</option>
-                                        {units.map(u => <option key={u.id} value={u.id}>{u.name} {u.code ? `(${u.code})` : ''}</option>)}
+                                        {units.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.name} {u.code ? `(${u.code})` : ''}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">JH Totales (P)</label>
                                     <input
-                                        type="number" step="0.01"
+                                        type="number"
+                                        step="0.01"
                                         value={data.total_jh_planned}
                                         onChange={(e) => setData('total_jh_planned', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
@@ -303,7 +303,7 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Días Efectivos</label>
+                                    <label className="block text-sm font-medium text-gray-700">D¡as Efectivos</label>
                                     <input
                                         type="number"
                                         value={data.effective_days_planned}
@@ -312,7 +312,6 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                     />
                                 </div>
 
-                                {/* Financials */}
                                 <div className="md:col-span-3 border-b pb-2 mb-2 mt-4">
                                     <h3 className="font-bold text-gray-800 uppercase text-xs">Costos Planificados</h3>
                                 </div>
@@ -320,7 +319,8 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Valor Unitario</label>
                                     <input
-                                        type="number" step="0.01"
+                                        type="number"
+                                        step="0.01"
                                         value={data.value_planned}
                                         onChange={(e) => setData('value_planned', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
@@ -330,13 +330,13 @@ export default function Create({ fields, species, varieties, taskTypes, laborTyp
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Valor Total (P)</label>
                                     <input
-                                        type="number" step="0.01"
+                                        type="number"
+                                        step="0.01"
                                         value={data.total_value_planned}
                                         onChange={(e) => setData('total_value_planned', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                     />
                                 </div>
-
                             </div>
 
                             <div className="mt-8 flex justify-end gap-3">

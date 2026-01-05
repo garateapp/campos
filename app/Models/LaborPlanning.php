@@ -6,6 +6,7 @@ use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\LaborType;
 use App\Models\UnitOfMeasure;
@@ -19,8 +20,8 @@ class LaborPlanning extends Model
         'year',
         'month',
         'field_id',
+        'planting_id',
         'species_id',
-        'variety_id',
         'planting_year',
         'cc',
         'hectares',
@@ -76,11 +77,27 @@ class LaborPlanning extends Model
     }
 
     /**
+     * Optional planting reference to reuse crop data.
+     */
+    public function planting(): BelongsTo
+    {
+        return $this->belongsTo(Planting::class);
+    }
+
+    /**
      * Get the variety associated with the labor planning.
      */
     public function variety(): BelongsTo
     {
         return $this->belongsTo(Variety::class);
+    }
+
+    /**
+     * Get the varieties associated with this planning entry (supports multiples per task).
+     */
+    public function varieties(): BelongsToMany
+    {
+        return $this->belongsToMany(Variety::class, 'labor_planning_variety')->withTimestamps();
     }
 
     /**

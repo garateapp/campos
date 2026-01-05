@@ -8,6 +8,8 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 
+import BulkUploadButton from '@/Components/BulkUploadButton';
+
 interface Worker {
     id: number;
     name: string;
@@ -100,12 +102,15 @@ export default function Index({ workers, contractors }: IndexProps) {
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={openCreateModal}
-                        className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
-                    >
-                        + Nuevo Jornalero
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <BulkUploadButton type="workers" />
+                        <button
+                            onClick={openCreateModal}
+                            className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
+                        >
+                            + Nuevo Jornalero
+                        </button>
+                    </div>
                 </div>
             }
         >

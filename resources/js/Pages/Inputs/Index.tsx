@@ -31,12 +31,32 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
     const [categoryFilter, setCategoryFilter] = useState(filters.input_category_id || '');
     const [lowStockOnly, setLowStockOnly] = useState(filters.low_stock || false);
     const [fieldFilter, setFieldFilter] = useState(filters.field_id || 'all');
+    const [transferInputId, setTransferInputId] = useState<number | null>(null);
+    const [transferFieldId, setTransferFieldId] = useState<string>('');
+    const [transferQuantity, setTransferQuantity] = useState<string>('');
 
     const handleFilterChange = (key: string, value: any) => {
         const newFilters = { ...filters, [key]: value || undefined };
         router.get(route('inputs.index'), newFilters, {
             preserveState: true,
             preserveScroll: true,
+        });
+    };
+
+    const openTransfer = (inputId: number, currentFieldId: number | null, currentStock: number) => {
+        setTransferInputId(inputId);
+        setTransferFieldId(currentFieldId ? currentFieldId.toString() : '');
+        setTransferQuantity(currentStock.toString());
+    };
+
+    const submitTransfer = () => {
+        if (!transferInputId) return;
+        router.post(route('inputs.transfer', transferInputId), { field_id: transferFieldId || null, quantity: transferQuantity }, {
+            onFinish: () => {
+                setTransferInputId(null);
+                setTransferFieldId('');
+                setTransferQuantity('');
+            },
         });
     };
 
@@ -142,57 +162,114 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {inputs.map((input) => (
-                                <Link
+                                <div
                                     key={input.id}
-                                    href={route('inputs.show', input.id)}
                                     className={`relative bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-all group ${input.is_low_stock ? 'border-red-200 ring-1 ring-red-100' : 'border-gray-100'
                                         }`}
                                 >
-                                    {input.is_low_stock && (
-                                        <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg uppercase tracking-wider">
-                                            Stock Bajo
-                                        </div>
-                                    )}
-                                    <div className="p-5">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{input.category_name}</p>
-                                        <h3 className="font-bold text-gray-900 group-hover:text-green-600 transition-colors truncate mb-1" title={input.name}>
-                                            {input.name}
-                                        </h3>
-                                        <p className="text-xs text-gray-500 mb-4 flex items-center gap-1">
-                                            <span>📍 {input.field_name}</span>
-                                        </p>
-
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm text-gray-500">Stock Actual:</span>
-                                            <span className={`font-bold ${input.is_low_stock ? 'text-red-600' : 'text-gray-900'}`}>
-                                                {input.current_stock} <span className="text-xs font-normal text-gray-400">{input.unit}</span>
-                                            </span>
-                                        </div>
-
-                                        <div className="w-full bg-gray-100 rounded-full h-1.5 mb-6 overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full ${input.is_low_stock ? 'bg-red-500' : 'bg-green-500'}`}
-                                                style={{ width: `${Math.min(100, (input.current_stock / (input.min_stock_alert || 1)) * 50)}%` }}
-                                            ></div>
-                                        </div>
-
-                                        <div className="flex justify-between items-end border-t border-gray-50 pt-4">
-                                            <div>
-                                                <p className="text-[10px] text-gray-400 uppercase font-bold">Costo Unitario</p>
-                                                <p className="font-bold text-gray-900">${input.unit_cost?.toLocaleString() || '0'}</p>
+                                    <Link href={route('inputs.show', input.id)} className="block">
+                                        {input.is_low_stock && (
+                                            <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg uppercase tracking-wider">
+                                                Stock Bajo
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-[10px] text-gray-400 uppercase font-bold">Valor Stock</p>
-                                                <p className="font-bold text-gray-900">${input.total_value.toLocaleString()}</p>
+                                        )}
+                                        <div className="p-5 pb-3">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{input.category_name}</p>
+                                            <h3 className="font-bold text-gray-900 group-hover:text-green-600 transition-colors truncate mb-1" title={input.name}>
+                                                {input.name}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 mb-4 flex items-center gap-1">
+                                                <span>📍 {input.field_name}</span>
+                                            </p>
+
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm text-gray-500">Stock Actual:</span>
+                                                <span className={`font-bold ${input.is_low_stock ? 'text-red-600' : 'text-gray-900'}`}>
+                                                    {input.current_stock} <span className="text-xs font-normal text-gray-400">{input.unit}</span>
+                                                </span>
+                                            </div>
+
+                                            <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4 overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full ${input.is_low_stock ? 'bg-red-500' : 'bg-green-500'}`}
+                                                    style={{ width: `${Math.min(100, (input.current_stock / (input.min_stock_alert || 1)) * 50)}%` }}
+                                                ></div>
+                                            </div>
+
+                                            <div className="flex justify-between items-end border-t border-gray-50 pt-4">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Costo Unitario</p>
+                                                    <p className="font-bold text-gray-900">${input.unit_cost?.toLocaleString() || '0'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Valor Stock</p>
+                                                    <p className="font-bold text-gray-900">${input.total_value.toLocaleString()}</p>
+                                                </div>
                                             </div>
                                         </div>
+                                    </Link>
+                                    <div className="flex justify-between items-center px-5 pb-4 pt-2 border-t border-gray-50 bg-gray-50">
+                                        <Link
+                                            href={route('inputs.edit', input.id)}
+                                            className="text-xs text-gray-600 hover:text-green-700"
+                                        >
+                                            Editar
+                                        </Link>
+                                        <button
+                                            onClick={() => openTransfer(input.id, input.field_id, input.current_stock)}
+                                            className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
+                                        >
+                                            Mover
+                                        </button>
                                     </div>
-                                </Link>
+                                </div>
                             ))}
                         </div>
                     )}
                 </div>
             </div>
+
+            {transferInputId !== null && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Mover Insumo</h3>
+                        <p className="text-sm text-gray-600 mb-3">Selecciona la parcela destino (o deja vacío para Bodega General).</p>
+                        <select
+                            value={transferFieldId}
+                            onChange={(e) => setTransferFieldId(e.target.value)}
+                            className="w-full border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500"
+                        >
+                            <option value="">Bodega General</option>
+                            {fields.map(field => (
+                                <option key={field.id} value={field.id}>{field.name}</option>
+                            ))}
+                        </select>
+                        <label className="block text-xs font-medium text-gray-700 mt-4 mb-1">Cantidad a mover</label>
+                        <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={transferQuantity}
+                            onChange={(e) => setTransferQuantity(e.target.value)}
+                            className="w-full border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500"
+                        />
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                onClick={() => { setTransferInputId(null); setTransferFieldId(''); }}
+                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={submitTransfer}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700"
+                            >
+                                Mover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

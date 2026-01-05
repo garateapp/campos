@@ -5,10 +5,14 @@ import Scanner from '../components/Scanner';
 import { Field } from '../types';
 import { COLORS, globalStyles } from '../theme';
 
+import ScreenHeader from '../components/ScreenHeader';
+
 export default function AttendanceScreen({ onBack }: { onBack: () => void }) {
     const [fields, setFields] = useState<Field[]>([]);
     const [selectedField, setSelectedField] = useState<Field | null>(null);
     const [showScanner, setShowScanner] = useState(false);
+
+    // ... (rest of the state and logic)
 
     useEffect(() => {
         loadFields();
@@ -21,6 +25,7 @@ export default function AttendanceScreen({ onBack }: { onBack: () => void }) {
     };
 
     const handleScan = async (code: string) => {
+        // ... (Scan logic remains same)
         setShowScanner(false);
         if (!selectedField) return;
 
@@ -70,12 +75,7 @@ export default function AttendanceScreen({ onBack }: { onBack: () => void }) {
 
     return (
         <View style={globalStyles.container}>
-            <View style={{ marginBottom: 20 }}>
-                <TouchableOpacity onPress={onBack} style={{ padding: 10 }}>
-                    <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>← Volver</Text>
-                </TouchableOpacity>
-                <Text style={globalStyles.title}>Asistencia</Text>
-            </View>
+            <ScreenHeader title="Asistencia" onBack={onBack} />
 
             {showScanner ? (
                 <Scanner onScanned={handleScan} onClose={() => setShowScanner(false)} />

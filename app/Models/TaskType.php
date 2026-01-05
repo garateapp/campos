@@ -10,10 +10,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TaskType extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToCompany;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'company_id',
         'name',
     ];
 
