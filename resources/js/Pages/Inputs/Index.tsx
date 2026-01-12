@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 
@@ -34,6 +34,7 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
     const [transferInputId, setTransferInputId] = useState<number | null>(null);
     const [transferFieldId, setTransferFieldId] = useState<string>('');
     const [transferQuantity, setTransferQuantity] = useState<string>('');
+    const { flash, errors } = usePage().props as any;
 
     const handleFilterChange = (key: string, value: any) => {
         const newFilters = { ...filters, [key]: value || undefined };
@@ -63,21 +64,60 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            Inventario de Insumos
-                        </h2>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                                Inventario de Insumos
+                            </h2>
                         <p className="text-sm text-gray-500">
                             Control de stock, costos y alertas de reposición
                         </p>
+                        </div>
+                    <div className="flex gap-3 items-center">
+                        <Link
+                            href={route('inputs.lots.index')}
+                            className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 transition ease-in-out duration-150"
+                        >
+                            Ver lotes FIFO
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                window.location.href = route('inputs.template');
+                            }}
+                            className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 transition ease-in-out duration-150"
+                        >
+                            Descargar plantilla
+                        </button>
+                        <label className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 transition ease-in-out duration-150 cursor-pointer">
+                            Importar CSV
+                            <input
+                                type="file"
+                                accept=".csv,text/csv"
+                                className="hidden"
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        const file = e.target.files[0];
+                                        router.post(route('inputs.import'), { file }, {
+                                            forceFormData: true,
+                                            onFinish: () => {
+                                                e.target.value = '';
+                                            },
+                                        });
+                                    }
+                                }}
+                            />
+                        </label>
+                        {errors?.file && (
+                            <div className="text-xs text-red-600 self-center">{errors.file}</div>
+                        )}
+                        <Link
+                            href={route('inputs.create')}
+                            className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
+                        >
+                            + Nuevo Insumo
+                        </Link>
                     </div>
-                    <Link
-                        href={route('inputs.create')}
-                        className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
-                    >
-                        + Nuevo Insumo
-                    </Link>
                 </div>
             }
         >
@@ -152,6 +192,28 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
                                 </p>
                             </div>
                         </div>
+                    </div>
+
+                    {(flash?.success || flash?.error || flash?.import_errors) && (
+                        <div className="mb-4 space-y-2">
+                            {flash?.success && <div className="p-3 rounded bg-green-100 text-green-800 text-sm">{flash.success}</div>}
+                            {flash?.error && <div className="p-3 rounded bg-red-100 text-red-800 text-sm">{flash.error}</div>}
+                            {flash?.import_errors && Array.isArray(flash.import_errors) && (
+                                <div className="p-3 rounded bg-yellow-100 text-yellow-800 text-sm">
+                                    <div className="font-semibold mb-1">Errores de importacion:</div>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        {flash.import_errors.map((err: string, idx: number) => (
+                                            <li key={idx}>{err}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="mb-6 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-md p-3">
+                        Formato CSV esperado: <code>nombre,categoria,unidad,stock_actual,alerta_minima,costo_unitario,fecha_factura,periodo_devolucion_dias,minimo_devolucion,fecha_vencimiento,parcela,notas</code>. Usa nombres (no IDs).
+                        La parcela puede quedar vacia o ser <code>Bodega General</code>.
                     </div>
 
                     {/* Inputs Grid */}

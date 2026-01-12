@@ -23,6 +23,10 @@ export default function Form({ input, fields, categories }: InputFormProps) {
         current_stock: input?.current_stock?.toString() || '0',
         min_stock_alert: input?.min_stock_alert?.toString() || '',
         unit_cost: input?.unit_cost?.toString() || '',
+        invoice_date: input?.invoice_date || '',
+        return_period_days: input?.return_period_days?.toString() || '',
+        return_min_quantity: input?.return_min_quantity?.toString() || '',
+        expiration_date: input?.expiration_date || '',
         notes: input?.notes || '',
     });
 
@@ -172,6 +176,66 @@ export default function Form({ input, fields, categories }: InputFormProps) {
                                         placeholder="Ej: 25000"
                                     />
                                     <InputError message={errors.unit_cost} className="mt-2" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <InputLabel htmlFor="invoice_date" value="Fecha de Factura" />
+                                    <TextInput
+                                        id="invoice_date"
+                                        type="date"
+                                        name="invoice_date"
+                                        value={data.invoice_date}
+                                        className="mt-1 block w-full"
+                                        onChange={(e) => setData('invoice_date', e.target.value)}
+                                    />
+                                    <InputError message={errors.invoice_date} className="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="expiration_date" value="Fecha de Vencimiento" />
+                                    <TextInput
+                                        id="expiration_date"
+                                        type="date"
+                                        name="expiration_date"
+                                        value={data.expiration_date}
+                                        className="mt-1 block w-full"
+                                        onChange={(e) => setData('expiration_date', e.target.value)}
+                                    />
+                                    <InputError message={errors.expiration_date} className="mt-2" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <InputLabel htmlFor="return_period_days" value="Periodo de Devolucion (dias)" />
+                                    <TextInput
+                                        id="return_period_days"
+                                        type="number"
+                                        name="return_period_days"
+                                        value={data.return_period_days}
+                                        className="mt-1 block w-full"
+                                        onChange={(e) => setData('return_period_days', e.target.value)}
+                                        min="0"
+                                        step="1"
+                                    />
+                                    <InputError message={errors.return_period_days} className="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="return_min_quantity" value="Minimo para Devolucion" />
+                                    <TextInput
+                                        id="return_min_quantity"
+                                        type="number"
+                                        name="return_min_quantity"
+                                        value={data.return_min_quantity}
+                                        className="mt-1 block w-full"
+                                        onChange={(e) => setData('return_min_quantity', e.target.value)}
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                    <InputError message={errors.return_min_quantity} className="mt-2" />
                                 </div>
                             </div>
 

@@ -22,6 +22,10 @@ class Input extends Model
         'current_stock',
         'min_stock_alert',
         'unit_cost',
+        'invoice_date',
+        'return_period_days',
+        'return_min_quantity',
+        'expiration_date',
         'notes',
     ];
 
@@ -31,6 +35,10 @@ class Input extends Model
         'current_stock' => 'decimal:2',
         'min_stock_alert' => 'decimal:2',
         'unit_cost' => 'decimal:2',
+        'invoice_date' => 'date',
+        'return_period_days' => 'integer',
+        'return_min_quantity' => 'decimal:2',
+        'expiration_date' => 'date',
     ];
 
     /**
@@ -63,6 +71,11 @@ class Input extends Model
     public function usages(): HasMany
     {
         return $this->hasMany(InputUsage::class);
+    }
+
+    public function lots(): HasMany
+    {
+        return $this->hasMany(InputLot::class);
     }
 
     /**

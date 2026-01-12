@@ -20,17 +20,27 @@ interface InputShowProps {
         current_stock: number;
         min_stock_alert: number | null;
         unit_cost: number | null;
+        invoice_date: string | null;
+        return_period_days: number | null;
+        return_min_quantity: number | null;
+        expiration_date: string | null;
         notes: string | null;
         field_name: string | null;
         field_id: number | null;
     };
+    lots: Array<{
+        id: number;
+        quantity: number;
+        remaining_quantity: number;
+        created_at: string;
+    }>;
     recentUsages: Usage[];
     fields: any[];
 }
 
 
 
-export default function Show({ input, recentUsages, fields = [] }: InputShowProps) {
+export default function Show({ input, lots, recentUsages, fields = [] }: InputShowProps) {
     const { data, setData, post, processing, reset, errors } = useForm({
         usage_date: new Date().toISOString().split('T')[0],
         quantity: '',
@@ -105,6 +115,28 @@ export default function Show({ input, recentUsages, fields = [] }: InputShowProp
                                 </div>
                             </div>
 
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Compra y Devoluciones</h3>
+                                <div className="space-y-3 text-sm text-gray-600">
+                                    <div className="flex justify-between">
+                                        <span>Fecha de factura</span>
+                                        <span className="font-semibold text-gray-900">{input.invoice_date || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Periodo de devolucion</span>
+                                        <span className="font-semibold text-gray-900">{input.return_period_days !== null ? `${input.return_period_days} dias` : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Minimo devolucion</span>
+                                        <span className="font-semibold text-gray-900">{input.return_min_quantity !== null ? `${input.return_min_quantity} ${input.unit}` : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Fecha de vencimiento</span>
+                                        <span className="font-semibold text-gray-900">{input.expiration_date || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Record Usage Form */}
                             <div className="bg-green-50 p-6 rounded-xl border border-green-100 shadow-sm">
                                 <h3 className="font-bold text-green-800 mb-4 flex items-center gap-2">
@@ -173,6 +205,40 @@ export default function Show({ input, recentUsages, fields = [] }: InputShowProp
 
                         {/* Usage History */}
                         <div className="lg:col-span-2 space-y-6">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center">
+                                    <h3 className="font-bold text-gray-900">Lotes FIFO</h3>
+                                    <span className="text-xs text-gray-400 font-medium">{lots.length} lotes</span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-100">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha ingreso</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad inicial</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remanente</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-50">
+                                            {lots.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={3} className="px-6 py-6 text-center text-sm text-gray-500">
+                                                        No hay lotes registrados.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                lots.map((lot) => (
+                                                    <tr key={lot.id}>
+                                                        <td className="px-6 py-3 text-sm text-gray-700">{lot.created_at}</td>
+                                                        <td className="px-6 py-3 text-sm text-gray-700">{lot.quantity} {input.unit}</td>
+                                                        <td className="px-6 py-3 text-sm font-semibold text-gray-900">{lot.remaining_quantity} {input.unit}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center">
                                     <h3 className="font-bold text-gray-900">Historial de Salidas / Consumos</h3>

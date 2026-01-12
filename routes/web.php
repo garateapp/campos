@@ -11,6 +11,7 @@ use App\Http\Controllers\CostController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FieldController;
 use App\Http\Controllers\InputController;
+use App\Http\Controllers\InputLotController;
 use App\Http\Controllers\PlantingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SpeciesController;
@@ -122,7 +123,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::get('harvest-collection', [\App\Http\Controllers\HarvestCollectionController::class, 'index'])->name('harvest-collection.index');
     Route::post('harvest-collection', [\App\Http\Controllers\HarvestCollectionController::class, 'store'])->name('harvest-collection.store');
     
-    // Plantings (Siembras)
+    // Plantings (Labores)
     Route::post('plantings/import', [PlantingController::class, 'import'])->name('plantings.import');
     Route::resource('plantings', PlantingController::class);
     Route::post('/plantings/{planting}/activities', [PlantingController::class, 'storeActivity'])->name('plantings.activities.store');
@@ -135,6 +136,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
 
     // Inputs (Insumos)
+    Route::get('inputs/lots', [InputLotController::class, 'index'])->name('inputs.lots.index');
+    Route::get('inputs/template', [InputController::class, 'downloadTemplate'])->name('inputs.template');
+    Route::post('inputs/import', [InputController::class, 'import'])->name('inputs.import');
     Route::resource('inputs', InputController::class);
     Route::post('/inputs/{input}/usage', [InputController::class, 'recordUsage'])->name('inputs.usage.store');
     Route::post('/inputs/{input}/transfer', [InputController::class, 'transfer'])->name('inputs.transfer');

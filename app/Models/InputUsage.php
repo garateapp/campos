@@ -6,6 +6,7 @@ use App\Traits\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InputUsage extends Model
 {
@@ -67,15 +68,10 @@ class InputUsage extends Model
                 }
             }
         });
+    }
 
-        // Update input stock when usage is recorded
-        static::created(function ($usage) {
-            if ($usage->input_id) {
-                $input = Input::find($usage->input_id);
-                if ($input) {
-                    $input->decrement('current_stock', $usage->quantity);
-                }
-            }
-        });
+    public function lotUsages(): HasMany
+    {
+        return $this->hasMany(InputUsageLot::class);
     }
 }

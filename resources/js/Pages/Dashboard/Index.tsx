@@ -104,7 +104,7 @@ export default function Index({ company, stats, financial, recentTasks, lowStock
                             color="green"
                         />
                         <StatCard
-                            title="Siembras Activas"
+                            title="Labores Activas"
                             value={stats.activePlantings.toString()}
                             subtitle="En proceso"
                             icon="🌱"

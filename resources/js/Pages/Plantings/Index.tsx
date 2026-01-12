@@ -55,7 +55,7 @@ export default function Index({ plantings, seasons, filters }: PlantingsIndexPro
                 <div className="flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            Registro de Siembras
+                            Registro de Labores
                         </h2>
                         <p className="text-sm text-gray-500">
                             Seguimiento de cultivos por parcela y temporada
@@ -90,7 +90,7 @@ export default function Index({ plantings, seasons, filters }: PlantingsIndexPro
                 </div>
             }
         >
-            <Head title="Siembras" />
+            <Head title="Labores" />
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -149,7 +149,7 @@ export default function Index({ plantings, seasons, filters }: PlantingsIndexPro
                     {plantings.length === 0 ? (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
                             <div className="text-4xl mb-4">🌱</div>
-                            <h3 className="text-lg font-medium text-gray-900">Sin siembras registradas</h3>
+                            <h3 className="text-lg font-medium text-gray-900">Sin Labores registradas</h3>
                             <p className="text-gray-500 mt-2 mb-4">Comienza registrando un cultivo en una de tus parcelas</p>
                             <Link
                                 href={route('plantings.create')}

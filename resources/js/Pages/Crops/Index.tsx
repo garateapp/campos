@@ -133,7 +133,7 @@ export default function Index({ crops }: IndexProps) {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variedad</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre Científico</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Días Cosecha</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Siembras</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Labores</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                                     </tr>
                                 </thead>
@@ -175,7 +175,7 @@ export default function Index({ crops }: IndexProps) {
                                                                 href={route('plantings.index', { crop_id: crop.id })}
                                                                 className="text-xs text-indigo-600 hover:text-indigo-800 underline"
                                                             >
-                                                                Ver siembras
+                                                                Ver Labores
                                                             </Link>
                                                         </div>
                                                     )}

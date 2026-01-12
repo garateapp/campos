@@ -53,7 +53,7 @@ export default function Authenticated({
                                         <Dropdown.Link href={route('crops.index')}>Cultivos</Dropdown.Link>
                                         <Dropdown.Link href={route('field-mapping')}>Mapa</Dropdown.Link>
                                         <Dropdown.Link href={route('tasks.index')}>Tareas</Dropdown.Link>
-                                        <Dropdown.Link href={route('plantings.index')}>Siembras</Dropdown.Link>
+                                        <Dropdown.Link href={route('plantings.index')}>Labores</Dropdown.Link>
                                     </Dropdown.Content>
                                 </Dropdown>
 
@@ -291,7 +291,7 @@ export default function Authenticated({
                             <ResponsiveNavLink href={route('crops.index')} active={route().current('crops.*')}>Cultivos</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('field-mapping')} active={route().current('field-mapping')}>Mapa</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('tasks.index')} active={route().current('tasks.*')}>Tareas</ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('plantings.index')} active={route().current('plantings.*')}>Siembras</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('plantings.index')} active={route().current('plantings.*')}>Labores</ResponsiveNavLink>
                         </div>
 
                         <div className="pt-4 pb-1 border-t border-gray-100">

@@ -61,7 +61,7 @@ export default function App() {
     { key: 'attendanceList', label: 'Listado de Asistencia' },
     { key: 'workers', label: 'Jornaleros' },
     { key: 'crops', label: 'Cultivos' },
-    { key: 'plantings', label: 'Siembras' },
+    { key: 'plantings', label: 'Labores' },
     { key: 'inventory', label: 'Inventario de Insumos' },
     { key: 'directCosts', label: 'Costos Directos' },
     { key: 'labor', label: 'Planificación Laboral' },

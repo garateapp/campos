@@ -126,7 +126,7 @@ export default function Index({ fields }: FieldsIndexProps) {
                                                 </div>
                                             )}
                                             <div className="flex justify-between">
-                                                <span className="text-gray-500">Siembras activas:</span>
+                                                <span className="text-gray-500">Labores activas:</span>
                                                 <span className="font-medium">{field.active_plantings_count}</span>
                                             </div>
                                         </div>

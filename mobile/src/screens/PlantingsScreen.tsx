@@ -138,7 +138,7 @@ export default function PlantingsScreen({ onBack }: { onBack: () => void }) {
             </View>
 
             <View style={globalStyles.card}>
-                <Text style={globalStyles.subtitle}>Siembras Registradas</Text>
+                <Text style={globalStyles.subtitle}>Labores Registradas</Text>
                 <FlatList
                     data={plantings}
                     keyExtractor={(item) => (item.id || Math.random()).toString()}
@@ -156,7 +156,7 @@ export default function PlantingsScreen({ onBack }: { onBack: () => void }) {
                             </View>
                         </View>
                     )}
-                    ListEmptyComponent={<Text style={styles.empty}>Aún no hay siembras.</Text>}
+                    ListEmptyComponent={<Text style={styles.empty}>Aún no hay Labores.</Text>}
                 />
             </View>
         </View>

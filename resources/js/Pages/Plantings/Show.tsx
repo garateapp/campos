@@ -61,6 +61,9 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 
 export default function Show({ planting }: PlantingShowProps) {
     const [activeTab, setActiveTab] = useState<'info' | 'activities' | 'harvests'>('info');
+    const harvestedPerHectare = planting.planted_area_hectares
+        ? planting.total_harvested_kg / planting.planted_area_hectares
+        : null;
 
     const activityForm = useForm({
         type: 'irrigation',
@@ -127,11 +130,12 @@ export default function Show({ planting }: PlantingShowProps) {
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     {/* Summary Bar */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                         <SummaryItem label="Área Plantada" value={`${planting.planted_area_hectares} ha`} icon="🗺️" />
                         <SummaryItem label="Fecha Plantación" value={planting.planted_date} icon="📅" />
                         <SummaryItem label="Rendimiento Esperado" value={planting.expected_yield_kg ? `${planting.expected_yield_kg.toLocaleString()} kg` : 'N/A'} icon="🎯" />
                         <SummaryItem label="Total Cosechado" value={`${planting.total_harvested_kg.toLocaleString()} kg`} icon="🍎" color="text-green-600" />
+                        <SummaryItem label="Kg por hectarea" value={harvestedPerHectare !== null ? `${harvestedPerHectare.toLocaleString()} kg/ha` : 'N/A'} icon="🌱" />
                     </div>
 
                     {/* Tabs */}
@@ -251,7 +255,7 @@ export default function Show({ planting }: PlantingShowProps) {
                                         <h4 className="font-semibold text-orange-800 mb-4 flex items-center gap-2">
                                             <span>🍎</span> Registrar Nueva Cosecha
                                         </h4>
-                                        <form onSubmit={submitHarvest} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                        <form onSubmit={submitHarvest} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                                             <div>
                                                 <label className="text-xs font-medium text-gray-500 uppercase">Fecha</label>
                                                 <input
@@ -376,3 +380,5 @@ function TabButton({ active, onClick, label, count }: { active: boolean; onClick
         </button>
     );
 }
+
+
