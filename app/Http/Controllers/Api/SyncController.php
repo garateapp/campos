@@ -40,6 +40,7 @@ class SyncController extends Controller
     {
         // Simple full dump strategy for V1
         // In V2 we can implement last_sync_at parameter
+        Log::debug('Syncing data download for user ID: ' . ($request->user()->id ?? 'guest'));
         try{
         $companyId = $request->user()->company_id ?? 1; // Fallback or auth check
 
@@ -150,6 +151,7 @@ class SyncController extends Controller
 
     public function upload(Request $request)
     {
+        Log::debug('Syncing data upload for user ID: ' . ($request->user()->id ?? 'guest'));
         $payload = $request->validate([
             'attendances' => 'array',
             'collections' => 'array',
