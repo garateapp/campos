@@ -32,6 +32,7 @@ use App\Models\TaskAssignment;
 use App\Models\LaborType;
 use App\Models\UnitOfMeasure;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class SyncController extends Controller
 {
@@ -404,6 +405,10 @@ class SyncController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::channel('single')->error('Sync upload failed', [
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+            ]);
             report($e);
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
