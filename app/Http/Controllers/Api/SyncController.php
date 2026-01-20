@@ -26,11 +26,6 @@ use App\Models\TaskType;
 use App\Models\TaskAssignment;
 use App\Models\LaborType;
 use App\Models\UnitOfMeasure;
-use App\Models\Task;
-use App\Models\TaskType;
-use App\Models\TaskAssignment;
-use App\Models\LaborType;
-use App\Models\UnitOfMeasure;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
