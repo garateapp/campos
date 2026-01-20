@@ -400,6 +400,7 @@ class SyncController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            report($e);
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
