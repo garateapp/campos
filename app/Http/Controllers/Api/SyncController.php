@@ -39,7 +39,7 @@ class SyncController extends Controller
     {
         // Simple full dump strategy for V1
         // In V2 we can implement last_sync_at parameter
-        
+        try{
         $companyId = $request->user()->company_id ?? 1; // Fallback or auth check
 
         return response()->json([
@@ -141,6 +141,10 @@ class SyncController extends Controller
                 ->values(),
             'server_time' => now()->toIso8601String(),
         ]);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function upload(Request $request)
