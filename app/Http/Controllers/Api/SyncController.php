@@ -181,14 +181,14 @@ class SyncController extends Controller
 
             if (!empty($payload['card_assignments'])) {
                 foreach ($payload['card_assignments'] as $record) {
-                    CardAssignment::firstOrCreate(
+                    CardAssignment::updateOrCreate(
                         [
                             'company_id' => $companyId,
-                            'worker_id' => $record['worker_id'],
                             'date' => $record['date'],
+                            'card_id' => $record['card_id'],
                         ],
                         [
-                            'card_id' => $record['card_id'],
+                            'worker_id' => $record['worker_id'],
                         ]
                     );
                     $processed['assignments']++;
