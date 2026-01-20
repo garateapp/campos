@@ -31,6 +31,34 @@ use Illuminate\Support\Facades\Log;
 
 class SyncController extends Controller
 {
+    protected function normalizeTime(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+        $value = str_replace(["\u{202F}", "\u{00A0}"], ' ', $value);
+        $value = preg_replace('/\s+/u', ' ', $value);
+        $value = str_ireplace(['a.m.', 'p.m.', 'a. m.', 'p. m.'], ['AM', 'PM', 'AM', 'PM'], $value);
+
+        if (preg_match('/^\d{1,2}:\d{2}$/', $value) === 1) {
+            $value .= ':00';
+        }
+
+        try {
+            return Carbon::createFromFormat('H:i:s', $value)->format('H:i:s');
+        } catch (\Exception $e) {
+            // fall through to more flexible parsing
+        }
+
+        try {
+            return Carbon::parse($value)->format('H:i:s');
+        } catch (\Exception $e) {
+            throw new \InvalidArgumentException("Invalid check_in_time format: {$value}");
+        }
+    }
+
     public function download(Request $request)
     {
         // Simple full dump strategy for V1
@@ -188,7 +216,7 @@ class SyncController extends Controller
                             'date' => $record['date'],
                         ],
                         [
-                            'check_in_time' => $record['check_in_time'],
+                            'check_in_time' => $this->normalizeTime($record['check_in_time'] ?? null),
                             'field_id' => $record['field_id'] ?? null,
                             'task_type_id' => $record['task_type_id'] ?? null,
                         ]
