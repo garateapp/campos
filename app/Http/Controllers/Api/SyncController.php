@@ -179,22 +179,6 @@ class SyncController extends Controller
                 'workers' => 0,
             ];
 
-            if (!empty($payload['card_assignments'])) {
-                foreach ($payload['card_assignments'] as $record) {
-                    CardAssignment::updateOrCreate(
-                        [
-                            'company_id' => $companyId,
-                            'date' => $record['date'],
-                            'card_id' => $record['card_id'],
-                        ],
-                        [
-                            'worker_id' => $record['worker_id'],
-                        ]
-                    );
-                    $processed['assignments']++;
-                }
-            }
-
             if (!empty($payload['attendances'])) {
                 foreach ($payload['attendances'] as $record) {
                     Attendance::firstOrCreate(
@@ -224,6 +208,39 @@ class SyncController extends Controller
                         'field_id' => $record['field_id'] ?? null,
                     ]);
                     $processed['collections']++;
+                }
+            }
+
+            if (!empty($payload['workers'])) {
+                foreach ($payload['workers'] as $record) {
+                    Worker::updateOrCreate(
+                        [
+                            'company_id' => $companyId,
+                            'id' => $record['id'] ?? null,
+                            'rut' => $record['rut'] ?? null,
+                        ],
+                        [
+                            'name' => $record['name'] ?? 'Jornalero',
+                            'contractor_id' => $record['contractor_id'] ?? null,
+                        ]
+                    );
+                    $processed['workers']++;
+                }
+            }
+
+            if (!empty($payload['card_assignments'])) {
+                foreach ($payload['card_assignments'] as $record) {
+                    CardAssignment::updateOrCreate(
+                        [
+                            'company_id' => $companyId,
+                            'date' => $record['date'],
+                            'card_id' => $record['card_id'],
+                        ],
+                        [
+                            'worker_id' => $record['worker_id'],
+                        ]
+                    );
+                    $processed['assignments']++;
                 }
             }
 
@@ -377,23 +394,6 @@ class SyncController extends Controller
                         ]
                     );
                     $processed['task_assignments']++;
-                }
-            }
-
-            if (!empty($payload['workers'])) {
-                foreach ($payload['workers'] as $record) {
-                    Worker::updateOrCreate(
-                        [
-                            'company_id' => $companyId,
-                            'id' => $record['id'] ?? null,
-                            'rut' => $record['rut'] ?? null,
-                        ],
-                        [
-                            'name' => $record['name'] ?? 'Jornalero',
-                            'contractor_id' => $record['contractor_id'] ?? null,
-                        ]
-                    );
-                    $processed['workers']++;
                 }
             }
 
