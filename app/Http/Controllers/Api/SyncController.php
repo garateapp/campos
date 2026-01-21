@@ -140,13 +140,15 @@ class SyncController extends Controller
                 ->orderByDesc('year')
                 ->orderByDesc('month')
                 ->limit(120)
-                ->get(['id', 'field_id', 'labor_name', 'year', 'month', 'num_jh_planned', 'total_jh_planned', 'notes'])
+                ->with(['laborType', 'taskType'])
+                ->get(['id', 'field_id', 'year', 'month', 'num_jh_planned', 'total_jh_planned', 'notes', 'labor_type_id', 'task_type_id'])
                 ->map(function ($plan) {
                     $date = Carbon::create($plan->year, $plan->month, 1);
+                    $taskName = $plan->laborType?->name ?? $plan->taskType?->name;
                     return [
                         'id' => $plan->id,
                         'field_id' => $plan->field_id,
-                        'task' => $plan->labor_name,
+                        'task' => $taskName,
                         'scheduled_date' => $date->toDateString(),
                         'workers_needed' => $plan->num_jh_planned,
                         'hours' => $plan->total_jh_planned,
@@ -359,13 +361,23 @@ class SyncController extends Controller
                     $date = !empty($record['scheduled_date'])
                         ? Carbon::parse($record['scheduled_date'])
                         : now();
+                    $laborTypeId = null;
+                    if (!empty($record['task'])) {
+                        $laborType = LaborType::firstOrCreate(
+                            [
+                                'company_id' => $companyId,
+                                'name' => $record['task'],
+                            ]
+                        );
+                        $laborTypeId = $laborType->id;
+                    }
 
                     LaborPlanning::create([
                         'company_id' => $companyId,
                         'year' => (int) $date->format('Y'),
                         'month' => (int) $date->format('n'),
                         'field_id' => $record['field_id'] ?? null,
-                        'labor_name' => $record['task'] ?? 'Labor',
+                        'labor_type_id' => $laborTypeId,
                         'num_jh_planned' => $record['workers_needed'] ?? null,
                         'total_jh_planned' => $record['hours'] ?? null,
                         'notes' => $record['notes'] ?? null,
