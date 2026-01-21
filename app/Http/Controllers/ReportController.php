@@ -166,7 +166,7 @@ class ReportController extends Controller
             ->join('fields', 'fields.id', '=', 'harvest_collections.field_id')
             ->join('harvest_containers', 'harvest_containers.id', '=', 'harvest_collections.harvest_container_id')
             ->where('harvest_collections.company_id', $companyId)
-            ->whereBetween('harvest_collections.date', [$startDate, $endDate])
+            ->where('harvest_collections.date',$startDate)
             ->when($fieldId, function ($query) use ($fieldId) {
                 $query->where('fields.id', $fieldId);
             })
