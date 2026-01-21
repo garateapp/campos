@@ -173,9 +173,7 @@ class SyncController extends Controller
                     ];
                 })
                 ->values(),
-            'task_assignments' => TaskAssignment::whereIn('task_id', Task::where('company_id', $companyId)->pluck('id'))
-                ->get(['id', 'task_id', 'worker_id', 'hours'])
-                ->values(),
+            'task_assignments' => [],
             'server_time' => now()->toIso8601String(),
         ]);
         } catch (\Exception $e) {
@@ -439,22 +437,6 @@ class SyncController extends Controller
                             $processed['task_assignments']++;
                         }
                     }
-                }
-            }
-
-            if (!empty($payload['task_assignments'])) {
-                foreach ($payload['task_assignments'] as $record) {
-                    TaskAssignment::updateOrCreate(
-                        [
-                            'id' => $record['id'] ?? null,
-                        ],
-                        [
-                            'task_id' => $record['task_id'] ?? null,
-                            'worker_id' => $record['worker_id'] ?? null,
-                            'hours' => $record['hours'] ?? null,
-                        ]
-                    );
-                    $processed['task_assignments']++;
                 }
             }
 
