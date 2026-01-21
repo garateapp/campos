@@ -141,7 +141,7 @@ class SyncController extends Controller
                 ->orderByDesc('month')
                 ->limit(120)
                 ->with(['laborType', 'taskType'])
-                ->get(['id', 'field_id', 'year', 'month', 'num_jh_planned', 'total_jh_planned', 'notes', 'labor_type_id', 'task_type_id'])
+                ->get(['id', 'field_id', 'year', 'month', 'num_jh_planned', 'total_jh_planned', 'labor_type_id', 'task_type_id'])
                 ->map(function ($plan) {
                     $date = Carbon::create($plan->year, $plan->month, 1);
                     $taskName = $plan->laborType?->name ?? $plan->taskType?->name;
@@ -152,7 +152,6 @@ class SyncController extends Controller
                         'scheduled_date' => $date->toDateString(),
                         'workers_needed' => $plan->num_jh_planned,
                         'hours' => $plan->total_jh_planned,
-                        'notes' => $plan->notes ?? null,
                     ];
                 })->values(),
             'task_types' => TaskType::all(['id', 'name']),
@@ -380,7 +379,6 @@ class SyncController extends Controller
                         'labor_type_id' => $laborTypeId,
                         'num_jh_planned' => $record['workers_needed'] ?? null,
                         'total_jh_planned' => $record['hours'] ?? null,
-                        'notes' => $record['notes'] ?? null,
                     ]);
                     $processed['labor_plans']++;
                 }
