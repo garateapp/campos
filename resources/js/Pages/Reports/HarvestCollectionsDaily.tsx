@@ -9,33 +9,32 @@ interface HarvestCollectionRow {
     container_id: number;
     container_name: string;
     total_quantity: number;
+    bin_count: number;
 }
 
 interface Props {
     rows: HarvestCollectionRow[];
     fields: { id: number; name: string }[];
     filters: {
-        start_date: string;
-        end_date: string;
+        date: string;
         field_id: number | string | null;
     };
 }
 
 export default function HarvestCollectionsDaily({ rows, fields, filters }: Props) {
     const [form, setForm] = useState({
-        start_date: filters.start_date,
-        end_date: filters.end_date,
+        date: filters.date,
         field_id: filters.field_id ?? '',
     });
 
     const totalQuantity = rows.reduce((sum, row) => sum + Number(row.total_quantity || 0), 0);
+    const totalBins = rows.reduce((sum, row) => sum + Number(row.bin_count || 0), 0);
 
     const applyFilters = () => {
         router.get(
             route('reports.harvest-collections'),
             {
-                start_date: form.start_date,
-                end_date: form.end_date,
+                date: form.date,
                 field_id: form.field_id || undefined,
             },
             { preserveScroll: true, preserveState: true }
@@ -67,23 +66,13 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
             <div className="py-6">
                 <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100 p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Fecha Inicio</label>
+                                <label className="block text-sm font-medium text-gray-700">Fecha</label>
                                 <input
                                     type="date"
-                                    value={form.start_date}
-                                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Fecha Fin</label>
-                                <input
-                                    type="date"
-                                    value={form.end_date}
-                                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                                    value={form.date}
+                                    onChange={(e) => setForm({ ...form, date: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                 />
                             </div>
@@ -122,6 +111,12 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                                     </span>{' '}
                                     total recolectado
                                 </div>
+                                <div>
+                                    <span className="font-semibold text-gray-900">
+                                        {totalBins.toLocaleString('es-CL')}
+                                    </span>{' '}
+                                    bins generados
+                                </div>
                             </div>
                         </div>
 
@@ -129,25 +124,22 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sector</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campo</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Envase</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Bins</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {rows.length === 0 ? (
                                         <tr>
                                             <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
-                                                No hay registros para el periodo seleccionado.
+                                                No hay registros para el dia seleccionado.
                                             </td>
                                         </tr>
                                     ) : (
                                         rows.map((row, index) => (
                                             <tr key={`${row.collection_date}-${row.field_id}-${row.container_id}-${index}`} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {row.collection_date}
-                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                                     {row.field_name}
                                                 </td>
@@ -156,6 +148,9 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-700 font-semibold">
                                                     {Number(row.total_quantity).toLocaleString('es-CL', { maximumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">
+                                                    {Number(row.bin_count).toLocaleString('es-CL')}
                                                 </td>
                                             </tr>
                                         ))

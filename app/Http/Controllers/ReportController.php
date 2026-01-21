@@ -156,17 +156,16 @@ class ReportController extends Controller
 
     public function harvestCollectionsDaily(Request $request)
     {
-        $startDate = $request->input('start_date', now()->toDateString());
-        $endDate = $request->input('end_date', now()->toDateString());
+        $date = $request->input('date', now()->toDateString());
         $fieldId = $request->input('field_id');
         $companyId = $request->user()->company_id;
 
         $rows = \App\Models\HarvestCollection::query()
-            ->selectRaw('harvest_collections.date as collection_date, fields.id as field_id, fields.name as field_name, harvest_containers.id as container_id, harvest_containers.name as container_name, SUM(harvest_collections.quantity) as total_quantity')
+            ->selectRaw('harvest_collections.date as collection_date, fields.id as field_id, fields.name as field_name, harvest_containers.id as container_id, harvest_containers.name as container_name, SUM(harvest_collections.quantity) as total_quantity, COUNT(*) as bin_count')
             ->join('fields', 'fields.id', '=', 'harvest_collections.field_id')
             ->join('harvest_containers', 'harvest_containers.id', '=', 'harvest_collections.harvest_container_id')
             ->where('harvest_collections.company_id', $companyId)
-            ->where('harvest_collections.date',$startDate)
+            ->whereDate('harvest_collections.date', $date)
             ->when($fieldId, function ($query) use ($fieldId) {
                 $query->where('fields.id', $fieldId);
             })
@@ -188,6 +187,7 @@ class ReportController extends Controller
                     'container_id' => $row->container_id,
                     'container_name' => $row->container_name,
                     'total_quantity' => (float) $row->total_quantity,
+                    'bin_count' => (int) $row->bin_count,
                 ];
             })
             ->values();
@@ -196,8 +196,7 @@ class ReportController extends Controller
             'rows' => $rows,
             'fields' => Field::orderBy('name')->get(['id', 'name']),
             'filters' => [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
+                'date' => $date,
                 'field_id' => $fieldId,
             ],
         ]);
