@@ -6,10 +6,11 @@ interface HarvestCollectionRow {
     collection_date: string;
     field_id: number;
     field_name: string;
+    worker_name: string;
     container_id: number;
     container_name: string;
     total_quantity: number;
-    bin_count: number;
+    total_bins: number;
 }
 
 interface Props {
@@ -28,7 +29,7 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
     });
 
     const totalQuantity = rows.reduce((sum, row) => sum + Number(row.total_quantity || 0), 0);
-    const totalBins = rows.reduce((sum, row) => sum + Number(row.bin_count || 0), 0);
+    const totalBins = rows.reduce((sum, row) => sum + Number(row.total_bins || 0), 0);
 
     const applyFilters = () => {
         router.get(
@@ -113,9 +114,9 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                                 </div>
                                 <div>
                                     <span className="font-semibold text-gray-900">
-                                        {totalBins.toLocaleString('es-CL')}
+                                        {totalBins.toLocaleString('es-CL', { maximumFractionDigits: 2 })}
                                     </span>{' '}
-                                    bins generados
+                                    bins totales
                                 </div>
                             </div>
                         </div>
@@ -125,6 +126,7 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campo</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Envase</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Bins</th>
@@ -144,13 +146,16 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                                                     {row.field_name}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {row.worker_name}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                                     {row.container_name}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-700 font-semibold">
                                                     {Number(row.total_quantity).toLocaleString('es-CL', { maximumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">
-                                                    {Number(row.bin_count).toLocaleString('es-CL')}
+                                                    {Number(row.total_bins).toLocaleString('es-CL', { maximumFractionDigits: 2 })}
                                                 </td>
                                             </tr>
                                         ))

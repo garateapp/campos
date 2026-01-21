@@ -161,20 +161,21 @@ class ReportController extends Controller
         $companyId = $request->user()->company_id;
 
         $rows = \App\Models\HarvestCollection::query()
-            ->selectRaw('harvest_collections.date as collection_date, fields.id as field_id, fields.name as field_name, harvest_containers.id as container_id, harvest_containers.name as container_name, SUM(harvest_collections.quantity) as total_quantity, COUNT(*) as bin_count')
+            ->selectRaw('harvest_collections.date as collection_date, fields.id as field_id, fields.name as field_name, workers.name as worker_name, harvest_containers.id as container_id, harvest_containers.name as container_name, SUM(harvest_collections.quantity) as total_quantity, SUM(harvest_collections.quantity / NULLIF(harvest_containers.quantity_per_bin, 0)) as total_bins')
             ->join('fields', 'fields.id', '=', 'harvest_collections.field_id')
             ->join('harvest_containers', 'harvest_containers.id', '=', 'harvest_collections.harvest_container_id')
+            ->join('workers', 'workers.id', '=', 'harvest_collections.worker_id')
             ->where('harvest_collections.company_id', $companyId)
             ->whereDate('harvest_collections.date', $date)
             ->when($fieldId, function ($query) use ($fieldId) {
                 $query->where('fields.id', $fieldId);
             })
-            ->groupBy('harvest_collections.date', 'fields.id', 'fields.name', 'harvest_containers.id', 'harvest_containers.name')
+            ->groupBy('harvest_collections.date', 'fields.id', 'fields.name', 'harvest_containers.id', 'harvest_containers.name', 'workers.name')
             ->orderBy('harvest_collections.date')
             ->orderBy('fields.name')
-            ->orderBy('harvest_containers.name');
-            Log::info('Query: ' . $rows->toSql());
-            $rows =$rows->get()
+            ->orderBy('harvest_containers.name')
+            ->orderBy('workers.name');
+        $rows = $rows->get()
             ->map(function ($row) {
                 $date = $row->collection_date;
                 if ($date instanceof \Carbon\Carbon) {
@@ -185,10 +186,11 @@ class ReportController extends Controller
                     'collection_date' => $date,
                     'field_id' => $row->field_id,
                     'field_name' => $row->field_name,
+                    'worker_name' => $row->worker_name,
                     'container_id' => $row->container_id,
                     'container_name' => $row->container_name,
                     'total_quantity' => (float) $row->total_quantity,
-                    'bin_count' => (int) $row->bin_count,
+                    'total_bins' => (float) $row->total_bins,
                 ];
             })
             ->values();
