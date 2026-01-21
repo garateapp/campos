@@ -194,7 +194,7 @@ class ReportController extends Controller
                 ];
             })
             ->values();
-
+        Log::debug('Harvest Collections Daily Row', ['rows' => $rows]);
         return Inertia::render('Reports/HarvestCollectionsDaily', [
             'rows' => $rows,
             'fields' => Field::orderBy('name')->get(['id', 'name']),
