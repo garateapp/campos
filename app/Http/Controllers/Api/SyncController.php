@@ -158,9 +158,20 @@ class SyncController extends Controller
             'labor_types' => LaborType::all(['id', 'name']),
             'unit_of_measures' => UnitOfMeasure::all(['id', 'name', 'code']),
             'tasks' => Task::where('company_id', $companyId)
-                ->orderByDesc('scheduled_date')
+                ->orderByDesc('due_date')
                 ->limit(200)
-                ->get(['id', 'name', 'field_id', 'task_type_id', 'scheduled_date', 'status', 'notes'])
+                ->get(['id', 'title', 'field_id', 'task_type_id', 'due_date', 'status', 'description'])
+                ->map(function ($task) {
+                    return [
+                        'id' => $task->id,
+                        'name' => $task->title,
+                        'field_id' => $task->field_id,
+                        'task_type_id' => $task->task_type_id,
+                        'scheduled_date' => optional($task->due_date)->toDateString(),
+                        'status' => $task->status,
+                        'notes' => $task->description,
+                    ];
+                })
                 ->values(),
             'task_assignments' => TaskAssignment::whereIn('task_id', Task::where('company_id', $companyId)->pluck('id'))
                 ->get(['id', 'task_id', 'worker_id', 'hours'])
@@ -386,18 +397,30 @@ class SyncController extends Controller
 
             if (!empty($payload['tasks'])) {
                 foreach ($payload['tasks'] as $record) {
+                    $status = $record['status'] ?? 'pending';
+                    $statusMap = [
+                        'pendiente' => 'pending',
+                        'en_progreso' => 'in_progress',
+                        'completada' => 'completed',
+                        'cancelada' => 'cancelled',
+                    ];
+                    if (isset($statusMap[$status])) {
+                        $status = $statusMap[$status];
+                    }
+
                     $task = Task::updateOrCreate(
                         [
                             'company_id' => $companyId,
                             'id' => $record['id'] ?? null,
-                            'name' => $record['name'] ?? 'Tarea',
                         ],
                         [
                             'field_id' => $record['field_id'] ?? null,
                             'task_type_id' => $record['task_type_id'] ?? null,
-                            'scheduled_date' => $record['scheduled_date'] ?? now(),
-                            'status' => $record['status'] ?? 'pendiente',
-                            'notes' => $record['notes'] ?? null,
+                            'created_by' => $request->user()?->id ?? 1,
+                            'title' => $record['name'] ?? 'Tarea',
+                            'description' => $record['notes'] ?? null,
+                            'due_date' => $record['scheduled_date'] ?? now(),
+                            'status' => $status,
                         ]
                     );
                     $processed['tasks']++;
