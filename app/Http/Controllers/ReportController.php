@@ -8,7 +8,7 @@ use App\Models\Field;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-
+use Illuminate\Support\Facades\Log;
 class ReportController extends Controller
 {
     public function index()
