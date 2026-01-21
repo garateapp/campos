@@ -173,8 +173,8 @@ class ReportController extends Controller
             ->orderBy('harvest_collections.date')
             ->orderBy('fields.name')
             ->orderBy('harvest_containers.name');
-        $rows = $rows->toSql();
-            $rows->get()
+            Log::info('Query: ' . $rows->toSql());
+            $rows =$rows->get()
             ->map(function ($row) {
                 $date = $row->collection_date;
                 if ($date instanceof \Carbon\Carbon) {
