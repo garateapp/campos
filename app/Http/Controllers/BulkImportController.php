@@ -13,7 +13,7 @@ class BulkImportController extends Controller
     public function import(Request $request, string $type)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,csv,xls|max:10240',
+            'file' => 'required|file|mimes:xlsx,csv,xls,txt|max:10240',
         ]);
 
         try {
