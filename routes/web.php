@@ -158,6 +158,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::get('/reports/harvest-logs', [\App\Http\Controllers\ReportController::class, 'harvestLogs'])->name('reports.harvest-logs');
     Route::get('/reports/application-logs', [\App\Http\Controllers\ReportController::class, 'applicationLogs'])->name('reports.application-logs');
     Route::get('/reports/harvest-daily', [\App\Http\Controllers\ReportController::class, 'harvestDaily'])->name('reports.harvest-daily');
+    Route::get('/reports/harvest-collections', [\App\Http\Controllers\ReportController::class, 'harvestCollectionsDaily'])->name('reports.harvest-collections');
 
     // Business Intelligence
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');

@@ -37,7 +37,7 @@ class ReportController extends Controller
 
         return new StreamedResponse(function () use ($harvests) {
             $handle = fopen('php://output', 'w');
-            
+
             // Add BOM for Excel UTF-8 compatibility
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
@@ -65,7 +65,7 @@ class ReportController extends Controller
 
     public function harvestDaily(Request $request)
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $startDate = $request->input('start_date', now()->startOfDay()->toDateString());
         $endDate = $request->input('end_date', now()->toDateString());
         $fieldId = $request->input('field_id');
 
@@ -115,7 +115,7 @@ class ReportController extends Controller
         $fieldId = $request->input('field_id');
 
         // Mapping 'InputUsage' as Application Log
-        // Ideally checking for 'fertilizer' or 'chemical' categories if we had them strictly defined, 
+        // Ideally checking for 'fertilizer' or 'chemical' categories if we had them strictly defined,
         // but for now exporting all input usages.
         $query = InputUsage::with(['field', 'input.inputCategory'])
             ->whereBetween('usage_date', [$startDate, $endDate]);
@@ -128,7 +128,7 @@ class ReportController extends Controller
 
         return new StreamedResponse(function () use ($usages) {
             $handle = fopen('php://output', 'w');
-            
+
             // BOM
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
@@ -151,6 +151,55 @@ class ReportController extends Controller
         }, 200, [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="reporte_aplicaciones_agroquimicos.csv"',
+        ]);
+    }
+
+    public function harvestCollectionsDaily(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+        $fieldId = $request->input('field_id');
+        $companyId = $request->user()->company_id;
+
+        $rows = \App\Models\HarvestCollection::query()
+            ->selectRaw('harvest_collections.date as collection_date, fields.id as field_id, fields.name as field_name, harvest_containers.id as container_id, harvest_containers.name as container_name, SUM(harvest_collections.quantity) as total_quantity')
+            ->join('fields', 'fields.id', '=', 'harvest_collections.field_id')
+            ->join('harvest_containers', 'harvest_containers.id', '=', 'harvest_collections.harvest_container_id')
+            ->where('harvest_collections.company_id', $companyId)
+            ->whereBetween('harvest_collections.date', [$startDate, $endDate])
+            ->when($fieldId, function ($query) use ($fieldId) {
+                $query->where('fields.id', $fieldId);
+            })
+            ->groupBy('harvest_collections.date', 'fields.id', 'fields.name', 'harvest_containers.id', 'harvest_containers.name')
+            ->orderBy('harvest_collections.date')
+            ->orderBy('fields.name')
+            ->orderBy('harvest_containers.name')
+            ->get()
+            ->map(function ($row) {
+                $date = $row->collection_date;
+                if ($date instanceof \Carbon\Carbon) {
+                    $date = $date->format('Y-m-d');
+                }
+
+                return [
+                    'collection_date' => $date,
+                    'field_id' => $row->field_id,
+                    'field_name' => $row->field_name,
+                    'container_id' => $row->container_id,
+                    'container_name' => $row->container_name,
+                    'total_quantity' => (float) $row->total_quantity,
+                ];
+            })
+            ->values();
+
+        return Inertia::render('Reports/HarvestCollectionsDaily', [
+            'rows' => $rows,
+            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'field_id' => $fieldId,
+            ],
         ]);
     }
 }

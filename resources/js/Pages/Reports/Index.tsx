@@ -53,6 +53,12 @@ export default function Index({ fields }: Props) {
                                 >
                                     Ver Cosecha por Campo y Dia
                                 </Link>
+                                <Link
+                                    href={route('reports.harvest-collections')}
+                                    className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                    Ver Cosecha Recolectada
+                                </Link>
                             </div>
 
                             <div className="mb-8">
