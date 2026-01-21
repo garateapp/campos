@@ -63,6 +63,51 @@ class ReportController extends Controller
         ]);
     }
 
+    public function harvestDaily(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+        $fieldId = $request->input('field_id');
+
+        $rows = Harvest::query()
+            ->selectRaw('harvests.harvest_date as harvest_date, fields.id as field_id, fields.name as field_name, SUM(harvests.quantity_kg) as total_kg, SUM(harvests.quantity_kg * COALESCE(harvests.price_per_kg, 0)) as total_value')
+            ->join('plantings', 'plantings.id', '=', 'harvests.planting_id')
+            ->join('fields', 'fields.id', '=', 'plantings.field_id')
+            ->whereBetween('harvests.harvest_date', [$startDate, $endDate])
+            ->when($fieldId, function ($query) use ($fieldId) {
+                $query->where('fields.id', $fieldId);
+            })
+            ->groupBy('harvests.harvest_date', 'fields.id', 'fields.name')
+            ->orderBy('harvests.harvest_date')
+            ->orderBy('fields.name')
+            ->get()
+            ->map(function ($row) {
+                $harvestDate = $row->harvest_date;
+                if ($harvestDate instanceof \Carbon\Carbon) {
+                    $harvestDate = $harvestDate->format('Y-m-d');
+                }
+
+                return [
+                    'harvest_date' => $harvestDate,
+                    'field_id' => $row->field_id,
+                    'field_name' => $row->field_name,
+                    'total_kg' => (float) $row->total_kg,
+                    'total_value' => (float) $row->total_value,
+                ];
+            })
+            ->values();
+
+        return Inertia::render('Reports/HarvestDaily', [
+            'rows' => $rows,
+            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'field_id' => $fieldId,
+            ],
+        ]);
+    }
+
     public function applicationLogs(Request $request)
     {
         $startDate = $request->input('start_date');

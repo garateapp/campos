@@ -157,6 +157,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/harvest-logs', [\App\Http\Controllers\ReportController::class, 'harvestLogs'])->name('reports.harvest-logs');
     Route::get('/reports/application-logs', [\App\Http\Controllers\ReportController::class, 'applicationLogs'])->name('reports.application-logs');
+    Route::get('/reports/harvest-daily', [\App\Http\Controllers\ReportController::class, 'harvestDaily'])->name('reports.harvest-daily');
 
     // Business Intelligence
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');

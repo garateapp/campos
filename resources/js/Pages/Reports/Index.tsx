@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 
@@ -46,6 +46,14 @@ export default function Index({ fields }: Props) {
                 <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
+                            <div className="mb-6 flex flex-wrap items-center gap-3">
+                                <Link
+                                    href={route('reports.harvest-daily')}
+                                    className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                    Ver Cosecha por Campo y Dia
+                                </Link>
+                            </div>
 
                             <div className="mb-8">
                                 <h3 className="text-lg font-medium text-gray-900 mb-2">Generar Informe</h3>
