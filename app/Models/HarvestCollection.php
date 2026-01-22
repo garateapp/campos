@@ -14,6 +14,7 @@ class HarvestCollection extends Model
     protected $fillable = [
         'company_id',
         'worker_id',
+        'card_id',
         'date',
         'harvest_container_id',
         'quantity',

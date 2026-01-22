@@ -134,9 +134,11 @@ export const initDB = async () => {
           worker_id INTEGER,
           card_id INTEGER,
           date TEXT,
+          deleted_at TEXT,
           synced INTEGER DEFAULT 0
       );
   `);
+    await ensureColumn('card_assignments', 'deleted_at', 'deleted_at TEXT');
 
     // Attendances (To Sync Up)
     await database.execAsync(`
@@ -145,24 +147,30 @@ export const initDB = async () => {
         worker_id INTEGER,
         date TEXT,
         check_in_time TEXT,
+        check_out_time TEXT,
         field_id INTEGER,
         task_type_id INTEGER,
         synced INTEGER DEFAULT 0
     );
   `);
+    await ensureColumn('attendances', 'check_out_time', 'check_out_time TEXT');
 
     // Harvest Collections (To Sync Up)
     await database.execAsync(`
     CREATE TABLE IF NOT EXISTS harvest_collections (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         worker_id INTEGER,
+        card_id INTEGER,
         date TEXT,
         harvest_container_id INTEGER,
         quantity INTEGER,
         field_id INTEGER,
+        created_at_ms INTEGER,
         synced INTEGER DEFAULT 0
     );
   `);
+    await ensureColumn('harvest_collections', 'card_id', 'card_id INTEGER');
+    await ensureColumn('harvest_collections', 'created_at_ms', 'created_at_ms INTEGER');
 
     // Crops catalog
     await database.execAsync(`

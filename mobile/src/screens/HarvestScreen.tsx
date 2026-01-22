@@ -102,9 +102,15 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
         }
 
         const now = Date.now();
-        const recently = lastScans[code];
-        if (recently && now - recently < 15 * 60 * 1000) {
-            Alert.alert('Advertencia', 'Esta tarjeta ya fue registrada en los últimos 15 minutos.');
+        const lastDb: any = await db.getFirstAsync(
+            'SELECT created_at_ms FROM harvest_collections WHERE card_id = ? ORDER BY created_at_ms DESC LIMIT 1',
+            cardRes.id
+        );
+        const lastDbMs = lastDb?.created_at_ms ? Number(lastDb.created_at_ms) : 0;
+        const lastMemoryMs = lastScans[code] || 0;
+        const lastSeen = Math.max(lastDbMs, lastMemoryMs);
+        if (lastSeen && now - lastSeen < 15 * 60 * 1000) {
+            Alert.alert('Advertencia', 'Esta tarjeta ya fue registrada en los ρtimos 15 minutos.');
             return;
         }
 
@@ -121,8 +127,8 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
 
         try {
             await db.runAsync(
-                'INSERT INTO harvest_collections (worker_id, date, harvest_container_id, quantity, field_id, synced) VALUES (?, ?, ?, ?, ?, 0)',
-                assignment.worker_id, today, selectedContainer.id, parseInt(quantity) || 1, selectedField.id
+                'INSERT INTO harvest_collections (worker_id, card_id, date, harvest_container_id, quantity, field_id, created_at_ms, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
+                assignment.worker_id, cardRes.id, today, selectedContainer.id, parseInt(quantity) || 1, selectedField.id, now
             );
             Alert.alert('Success', `Registered +${quantity} (${selectedContainer.name})`);
             setLastScans(prev => ({ ...prev, [code]: now }));

@@ -1,10 +1,11 @@
 import axios from 'axios';
-import { getDB } from '../db/database';
+import { getDB, initDB } from '../db/database';
 
 // Replace with your computer's IP address
 const API_URL = 'https://campos.appgreenex.cl/api/v1/sync';
 
 export const syncData = async (token: string) => {
+    await initDB();
     const db = await getDB();
 
     try {
@@ -54,6 +55,7 @@ export const syncData = async (token: string) => {
 
             await db.execAsync('UPDATE attendances SET synced = 1 WHERE synced = 0');
             await db.execAsync('UPDATE harvest_collections SET synced = 1 WHERE synced = 0');
+            await db.execAsync('DELETE FROM card_assignments WHERE synced = 0 AND deleted_at IS NOT NULL');
             await db.execAsync('UPDATE card_assignments SET synced = 1 WHERE synced = 0');
             await db.execAsync('UPDATE crops SET synced = 1 WHERE synced = 0');
             await db.execAsync('UPDATE plantings SET synced = 1 WHERE synced = 0');
@@ -158,8 +160,9 @@ export const syncData = async (token: string) => {
                 await db.runAsync('INSERT INTO card_assignments (worker_id, card_id, date, synced) VALUES (?, ?, ?, 1)', a.worker_id, a.card_id, a.date);
             }
             for (const a of localUnsynced.cardAssignments) {
+                if (a.deleted_at) continue;
                 await db.runAsync(
-                    'INSERT OR IGNORE INTO card_assignments (worker_id, card_id, date, synced) VALUES (?, ?, ?, 0)',
+                    'INSERT OR IGNORE INTO card_assignments (worker_id, card_id, date, deleted_at, synced) VALUES (?, ?, ?, NULL, 0)',
                     a.worker_id, a.card_id, a.date
                 );
             }

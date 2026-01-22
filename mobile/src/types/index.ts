@@ -34,6 +34,7 @@ export interface CardAssignment {
     worker_id: number;
     card_id: number;
     date: string;
+    deleted_at?: string | null;
     synced?: number;
 }
 
@@ -42,6 +43,7 @@ export interface Attendance {
     worker_id: number;
     date: string;
     check_in_time: string;
+    check_out_time?: string | null;
     field_id: number;
     task_type_id: number;
     synced?: number;
@@ -50,10 +52,12 @@ export interface Attendance {
 export interface HarvestCollection {
     id?: number;
     worker_id: number;
+    card_id?: number;
     date: string;
     harvest_container_id: number;
     quantity: number;
     field_id: number;
+    created_at_ms?: number;
     synced?: number;
 }
 

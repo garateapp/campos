@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Switch, TextInput } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Switch, TextInput, ScrollView } from 'react-native';
 import { getDB } from '../db/database';
 import Scanner from '../components/Scanner';
-import { Worker } from '../types';
+import { Field, TaskType, Worker } from '../types';
 import { COLORS, globalStyles } from '../theme';
 
 import ScreenHeader from '../components/ScreenHeader';
@@ -10,12 +10,19 @@ import ScreenHeader from '../components/ScreenHeader';
 export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+    const [fields, setFields] = useState<Field[]>([]);
+    const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
+    const [selectedField, setSelectedField] = useState<Field | null>(null);
+    const [selectedTaskType, setSelectedTaskType] = useState<TaskType | null>(null);
     const [scannerMode, setScannerMode] = useState<'card' | null>(null);
     const [identityChecked, setIdentityChecked] = useState(false);
     const [newWorker, setNewWorker] = useState({ name: '', rut: '' });
+    const [assignMode, setAssignMode] = useState(true);
+    const [showTaskTypes, setShowTaskTypes] = useState(false);
 
     useEffect(() => {
         loadWorkers();
+        loadMeta();
     }, []);
 
     const loadWorkers = async () => {
@@ -24,12 +31,24 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
         setWorkers(result as Worker[]);
     };
 
+    const loadMeta = async () => {
+        const db = await getDB();
+        const f = await db.getAllAsync('SELECT * FROM fields ORDER BY name');
+        const t = await db.getAllAsync('SELECT * FROM task_types ORDER BY name');
+        setFields(f as Field[]);
+        setTaskTypes(t as TaskType[]);
+    };
+
     const handleCardScan = async (code: string) => {
-        if (!identityChecked) {
-            Alert.alert('Validación requerida', 'Confirma la identidad del jornalero antes de asignar.');
+        if (assignMode && !identityChecked) {
+            Alert.alert('Validaci¢n requerida', 'Confirma la identidad del jornalero antes de asignar.');
             return;
         }
         if (!selectedWorker) return;
+        if (assignMode && (!selectedField || !selectedTaskType)) {
+            Alert.alert('Faltan datos', 'Selecciona el campo y el tipo de tarea.');
+            return;
+        }
 
         const db = await getDB();
         const cardResult: any = await db.getFirstAsync('SELECT id FROM cards WHERE code = ?', code);
@@ -42,16 +61,92 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
         const today = new Date().toISOString().split('T')[0];
 
         try {
-            await db.runAsync(
-                'INSERT INTO card_assignments (worker_id, card_id, date, synced) VALUES (?, ?, ?, 0)',
-                selectedWorker.id, cardResult.id, today
-            );
-            // opcional: marcar trabajador como validado
-            await db.runAsync('UPDATE workers SET is_identity_validated = 1, synced = 0 WHERE id = ?', selectedWorker.id);
+            if (assignMode) {
+                const existing: any = await db.getFirstAsync(
+                    'SELECT worker_id FROM card_assignments WHERE card_id = ? AND date = ?',
+                    cardResult.id,
+                    today
+                );
+                if (existing) {
+                    if (existing.worker_id === selectedWorker.id) {
+                        Alert.alert('Aviso', 'Esta tarjeta ya est  asignada a este trabajador hoy.');
+                    } else {
+                        Alert.alert('Error', 'Esta tarjeta ya est  asignada a otro trabajador hoy.');
+                    }
+                    return;
+                }
 
-            Alert.alert('Success', `Card ${code} assigned to ${selectedWorker.name}`);
+                await db.runAsync(
+                    'DELETE FROM card_assignments WHERE card_id = ? AND date = ?',
+                    cardResult.id,
+                    today
+                );
+                await db.runAsync(
+                    'INSERT INTO card_assignments (worker_id, card_id, date, deleted_at, synced) VALUES (?, ?, ?, NULL, 0)',
+                    selectedWorker.id, cardResult.id, today
+                );
+                await db.runAsync('UPDATE workers SET is_identity_validated = 1, synced = 0 WHERE id = ?', selectedWorker.id);
+
+                const attendanceExists: any = await db.getFirstAsync(
+                    'SELECT id, check_in_time FROM attendances WHERE worker_id = ? AND date = ?',
+                    selectedWorker.id,
+                    today
+                );
+                const time = new Date().toLocaleTimeString();
+                if (attendanceExists) {
+                    await db.runAsync(
+                        'UPDATE attendances SET field_id = ?, task_type_id = ?, check_in_time = COALESCE(check_in_time, ?), synced = 0 WHERE id = ?',
+                        selectedField!.id,
+                        selectedTaskType!.id,
+                        time,
+                        attendanceExists.id
+                    );
+                } else {
+                    await db.runAsync(
+                        'INSERT INTO attendances (worker_id, date, check_in_time, field_id, task_type_id, synced) VALUES (?, ?, ?, ?, ?, 0)',
+                        selectedWorker.id, today, time, selectedField!.id, selectedTaskType!.id
+                    );
+                }
+
+                Alert.alert('Success', `Card ${code} asignada a ${selectedWorker.name}`);
+            } else {
+                const existing: any = await db.getFirstAsync(
+                    'SELECT worker_id FROM card_assignments WHERE card_id = ? AND date = ?',
+                    cardResult.id,
+                    today
+                );
+                if (!existing) {
+                    Alert.alert('Aviso', 'Esta tarjeta no est  asignada hoy.');
+                    return;
+                }
+                if (existing.worker_id !== selectedWorker.id) {
+                    Alert.alert('Error', 'La tarjeta pertenece a otro trabajador.');
+                    return;
+                }
+
+                const deletedAt = new Date().toISOString();
+                await db.runAsync(
+                    'UPDATE card_assignments SET deleted_at = ?, synced = 0 WHERE card_id = ? AND date = ?',
+                    deletedAt,
+                    cardResult.id,
+                    today
+                );
+
+                const time = new Date().toLocaleTimeString();
+                await db.runAsync(
+                    'UPDATE attendances SET check_out_time = ?, synced = 0 WHERE worker_id = ? AND date = ?',
+                    time,
+                    selectedWorker.id,
+                    today
+                );
+
+                Alert.alert('Success', `Card ${code} desasignada de ${selectedWorker.name}`);
+            }
+
             setSelectedWorker(null);
             setIdentityChecked(false);
+            setSelectedField(null);
+            setSelectedTaskType(null);
             setScannerMode(null);
         } catch (e) {
             Alert.alert('Error', 'Failed to save assignment');
@@ -104,6 +199,10 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
     };
 
     const createWorker = async () => {
+        if (!assignMode) {
+            Alert.alert('Aviso', 'Para desasignar seleccione un trabajador existente.');
+            return;
+        }
         if (!newWorker.name.trim()) {
             Alert.alert('Falta nombre', 'Ingresa el nombre del jornalero');
             return;
@@ -125,6 +224,23 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
         }
     };
 
+    const renderChipRow = <T extends { id: number; name: string }>(data: T[], selectedId: number | null, onSelect: (id: number) => void) => (
+        <View style={styles.chipContainer}>
+            {data.map((item) => {
+                const selected = selectedId === item.id;
+                return (
+                    <TouchableOpacity
+                        key={item.id}
+                        style={[styles.chip, selected && styles.chipSelected]}
+                        onPress={() => onSelect(item.id)}
+                    >
+                        <Text style={[styles.chipText, selected && { color: COLORS.white }]}>{item.name}</Text>
+                    </TouchableOpacity>
+                );
+            })}
+        </View>
+    );
+
     return (
         <View style={globalStyles.container}>
             <ScreenHeader title="Asignar Tarjetas" onBack={onBack} />
@@ -135,15 +251,58 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
                 <>
                     <Text style={globalStyles.subtitle}>Seleccione Trabajador:</Text>
                     {selectedWorker ? (
-                        <View style={globalStyles.card}>
+                        <ScrollView style={globalStyles.card} contentContainerStyle={{ paddingBottom: 12 }}>
                             <Text style={[globalStyles.text, { fontSize: 20, marginBottom: 20, fontWeight: 'bold', textAlign: 'center' }]}>
                                 {selectedWorker.name}
                             </Text>
 
                             <View style={styles.identityRow}>
+                                <Text style={styles.identityLabel}>Asignar / Desasignar</Text>
+                                <Switch value={assignMode} onValueChange={setAssignMode} />
+                            </View>
+
+                            <View style={styles.identityRow}>
                                 <Text style={styles.identityLabel}>Identidad verificada</Text>
                                 <Switch value={identityChecked} onValueChange={setIdentityChecked} />
                             </View>
+
+                            {assignMode && (
+                                <>
+                                    <Text style={styles.sectionLabel}>Campo</Text>
+                                    {renderChipRow(fields, selectedField?.id ?? null, (id) => {
+                                        const field = fields.find((f) => f.id === id) || null;
+                                        setSelectedField(field);
+                                    })}
+
+                                    <Text style={styles.sectionLabel}>Tipo de tarea</Text>
+                                    <TouchableOpacity
+                                        style={styles.dropdownButton}
+                                        onPress={() => setShowTaskTypes((prev) => !prev)}
+                                    >
+                                        <Text style={styles.dropdownButtonText}>
+                                            {selectedTaskType?.name || 'Seleccionar tipo de tarea'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {showTaskTypes && (
+                                        <View style={styles.dropdownList}>
+                                            <ScrollView>
+                                                {taskTypes.map((task) => (
+                                                    <TouchableOpacity
+                                                        key={task.id}
+                                                        style={styles.dropdownItem}
+                                                        onPress={() => {
+                                                            setSelectedTaskType(task);
+                                                            setShowTaskTypes(false);
+                                                        }}
+                                                    >
+                                                        <Text style={styles.dropdownItemText}>{task.name}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                    )}
+                                </>
+                            )}
 
                             <TouchableOpacity style={globalStyles.button} onPress={() => setScannerMode('card')}>
                                 <Text style={globalStyles.buttonText}>ESCANEAR TARJETA</Text>
@@ -152,7 +311,7 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
                             <TouchableOpacity style={[globalStyles.secondaryButton, { marginTop: 10 }]} onPress={() => setSelectedWorker(null)}>
                                 <Text style={globalStyles.secondaryButtonText}>Cambiar Trabajador</Text>
                             </TouchableOpacity>
-                        </View>
+                        </ScrollView>
                     ) : (
                         <>
                             <View style={globalStyles.card}>
@@ -169,7 +328,7 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
                                     value={newWorker.rut}
                                     onChangeText={(value) => setNewWorker({ ...newWorker, rut: value })}
                                 />
-                                <TouchableOpacity style={globalStyles.button} onPress={createWorker}>
+                                <TouchableOpacity style={globalStyles.button} onPress={createWorker} disabled={!assignMode}>
                                     <Text style={globalStyles.buttonText}>Crear y asignar</Text>
                                 </TouchableOpacity>
                             </View>
@@ -205,5 +364,63 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLORS.text,
         fontWeight: '600',
+    },
+    sectionLabel: {
+        marginTop: 8,
+        marginBottom: 6,
+        color: COLORS.textSecondary,
+        fontWeight: '600',
+    },
+    chipContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 12,
+    },
+    chip: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.white,
+    },
+    chipSelected: {
+        backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
+    },
+    chipText: {
+        color: COLORS.text,
+        fontWeight: '600',
+    },
+    dropdownButton: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: COLORS.white,
+        marginBottom: 8,
+    },
+    dropdownButtonText: {
+        color: COLORS.text,
+        fontWeight: '600',
+    },
+    dropdownList: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 10,
+        backgroundColor: COLORS.white,
+        marginBottom: 12,
+        maxHeight: 220,
+    },
+    dropdownItem: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    dropdownItemText: {
+        color: COLORS.text,
     },
 });

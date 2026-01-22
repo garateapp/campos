@@ -219,7 +219,7 @@ class SyncController extends Controller
 
             if (!empty($payload['attendances'])) {
                 foreach ($payload['attendances'] as $record) {
-                    Attendance::firstOrCreate(
+                    Attendance::updateOrCreate(
                         [
                             'company_id' => $companyId,
                             'worker_id' => $record['worker_id'],
@@ -227,6 +227,7 @@ class SyncController extends Controller
                         ],
                         [
                             'check_in_time' => $this->normalizeTime($record['check_in_time'] ?? null),
+                            'check_out_time' => $this->normalizeTime($record['check_out_time'] ?? null),
                             'field_id' => $record['field_id'] ?? null,
                             'task_type_id' => $record['task_type_id'] ?? null,
                         ]
@@ -240,6 +241,7 @@ class SyncController extends Controller
                     HarvestCollection::create([
                         'company_id' => $companyId,
                         'worker_id' => $record['worker_id'],
+                        'card_id' => $record['card_id'] ?? null,
                         'date' => $record['date'],
                         'harvest_container_id' => $record['harvest_container_id'],
                         'quantity' => $record['quantity'],
@@ -268,6 +270,14 @@ class SyncController extends Controller
 
             if (!empty($payload['card_assignments'])) {
                 foreach ($payload['card_assignments'] as $record) {
+                    if (!empty($record['deleted_at'])) {
+                        CardAssignment::where('company_id', $companyId)
+                            ->where('date', $record['date'])
+                            ->where('card_id', $record['card_id'])
+                            ->delete();
+                        $processed['assignments']++;
+                        continue;
+                    }
                     CardAssignment::updateOrCreate(
                         [
                             'company_id' => $companyId,
