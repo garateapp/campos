@@ -20,7 +20,7 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
-            'device_name' => 'required',
+            'device_name' => 'sometimes|string',
         ]);
 
         if (!Auth::attempt($request->only('email', 'password'))) {
@@ -39,7 +39,8 @@ class AuthController extends Controller
         }
 
         // Create token with ability to access everything for now, or scope it
-        $token = $user->createToken($request->device_name)->plainTextToken;
+        $deviceName = $request->input('device_name') ?: 'mobile';
+        $token = $user->createToken($deviceName)->plainTextToken;
 
         return response()->json([
             'token' => $token,
