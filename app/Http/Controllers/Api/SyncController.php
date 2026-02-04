@@ -257,6 +257,24 @@ class SyncController extends Controller
 
             if (!empty($payload['workers'])) {
                 foreach ($payload['workers'] as $record) {
+                    $contractorId = $record['contractor_id'] ?? null;
+                    if (empty($contractorId)) {
+                        // Workers table requires contractor_id NOT NULL. If mobile created a worker without contractor,
+                        // attach it to a safe default contractor for the company to keep sync working.
+                        $defaultContractor = Contractor::firstOrCreate(
+                            [
+                                'company_id' => $companyId,
+                                'business_name' => 'Sin contratista',
+                            ],
+                            [
+                                'rut' => null,
+                                'contact_name' => null,
+                                'contact_email' => null,
+                            ]
+                        );
+                        $contractorId = $defaultContractor->id;
+                    }
+
                     Worker::updateOrCreate(
                         [
                             'company_id' => $companyId,
@@ -265,7 +283,7 @@ class SyncController extends Controller
                         ],
                         [
                             'name' => $record['name'] ?? 'Jornalero',
-                            'contractor_id' => $record['contractor_id'] ?? null,
+                            'contractor_id' => $contractorId,
                         ]
                     );
                     $processed['workers']++;
