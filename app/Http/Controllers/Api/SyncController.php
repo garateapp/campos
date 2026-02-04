@@ -69,7 +69,11 @@ class SyncController extends Controller
 
         return response()->json([
             'workers' => Worker::where('company_id', $companyId)->get(),
-            'contractors' => Contractor::where('company_id', $companyId)->get(),
+            // Mobile expects contractors as { id, name }. In the web DB model the display name is `business_name`.
+            'contractors' => Contractor::where('company_id', $companyId)
+                ->get(['id', 'business_name'])
+                ->map(fn ($c) => ['id' => $c->id, 'name' => $c->business_name])
+                ->values(),
             'fields' => Field::where('company_id', $companyId)->get(),
             'species' => Species::where('company_id', $companyId)->with('harvestContainers')->get(),
             'varieties' => Variety::where('company_id', $companyId)->get(['id', 'name', 'species_id']),
