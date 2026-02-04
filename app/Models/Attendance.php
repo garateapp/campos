@@ -16,6 +16,7 @@ class Attendance extends Model
         'worker_id',
         'date',
         'check_in_time',
+        'check_out_time',
         'field_id',
         'task_type_id',
     ];
