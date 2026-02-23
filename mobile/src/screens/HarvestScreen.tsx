@@ -20,6 +20,7 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
     const [selectedSpecies, setSelectedSpecies] = useState<Species | null>(null);
     const [selectedContainer, setSelectedContainer] = useState<HarvestContainer | null>(null);
     const [lastScans, setLastScans] = useState<Record<string, number>>({});
+    const [scanLocked, setScanLocked] = useState(false);
 
     const [quantity, setQuantity] = useState('1');
 
@@ -92,12 +93,19 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
     }, [selectedSpecies, allContainers, selectedContainer]);
 
     const handleScan = async (code: string) => {
-        if (!selectedField || !selectedContainer) return;
+        if (scanLocked) return;
+        setScanLocked(true);
+        if (!selectedField || !selectedContainer) {
+            setScanLocked(false);
+            return;
+        }
 
         const db = await getDB();
         const cardRes: any = await db.getFirstAsync('SELECT id FROM cards WHERE code = ?', code);
         if (!cardRes) {
-            Alert.alert('Error', 'Card not found');
+            Alert.alert('Leído', 'Tarjeta no encontrada.', [
+                { text: 'OK', onPress: () => setScanLocked(false) },
+            ]);
             return;
         }
 
@@ -110,7 +118,9 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
         const lastMemoryMs = lastScans[code] || 0;
         const lastSeen = Math.max(lastDbMs, lastMemoryMs);
         if (lastSeen && now - lastSeen < 15 * 60 * 1000) {
-            Alert.alert('Advertencia', 'Esta tarjeta ya fue registrada en los ρtimos 15 minutos.');
+            Alert.alert('Leído', 'Esta tarjeta ya fue registrada en los últimos 15 minutos.', [
+                { text: 'OK', onPress: () => setScanLocked(false) },
+            ]);
             return;
         }
 
@@ -121,7 +131,9 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
         );
 
         if (!assignment) {
-            Alert.alert('Error', 'Card not assigned for today');
+            Alert.alert('Leído', 'Tarjeta no asignada para hoy.', [
+                { text: 'OK', onPress: () => setScanLocked(false) },
+            ]);
             return;
         }
 
@@ -130,10 +142,14 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
                 'INSERT INTO harvest_collections (worker_id, card_id, date, harvest_container_id, quantity, field_id, created_at_ms, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
                 assignment.worker_id, cardRes.id, today, selectedContainer.id, parseInt(quantity) || 1, selectedField.id, now
             );
-            Alert.alert('Success', `Registered +${quantity} (${selectedContainer.name})`);
+            Alert.alert('Leído', `Registrado +${quantity} (${selectedContainer.name})`, [
+                { text: 'OK', onPress: () => setScanLocked(false) },
+            ]);
             setLastScans(prev => ({ ...prev, [code]: now }));
         } catch (e) {
-            Alert.alert('Error', 'Failed to save');
+            Alert.alert('Leído', 'Error al guardar.', [
+                { text: 'OK', onPress: () => setScanLocked(false) },
+            ]);
         }
     };
 
@@ -217,7 +233,20 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
             />
 
             <View style={{ height: 260, borderRadius: 12, overflow: 'hidden', marginTop: 10, borderWidth: 1, borderColor: COLORS.border }}>
-                <Scanner onScanned={handleScan} onClose={() => {}} />
+                {scanLocked ? (
+                    <View style={styles.lockedBox}>
+                        <Text style={styles.lockedText}>Leído</Text>
+                        <Text style={styles.lockedSubtext}>Confirma el mensaje para continuar.</Text>
+                        <TouchableOpacity
+                            style={styles.resumeButton}
+                            onPress={() => setScanLocked(false)}
+                        >
+                            <Text style={styles.resumeButtonText}>Reanudar</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <Scanner onScanned={handleScan} onClose={() => {}} />
+                )}
             </View>
 
             <TouchableOpacity style={[globalStyles.secondaryButton, { marginTop: 10 }]} onPress={() => setStep(2)}>
@@ -244,4 +273,34 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
     );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+    lockedBox: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f4f4f4',
+    },
+    lockedText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: COLORS.text,
+        marginBottom: 6,
+    },
+    lockedSubtext: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        textAlign: 'center',
+        paddingHorizontal: 12,
+    },
+    resumeButton: {
+        marginTop: 12,
+        backgroundColor: COLORS.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    resumeButtonText: {
+        color: COLORS.white,
+        fontWeight: '700',
+    },
+});
