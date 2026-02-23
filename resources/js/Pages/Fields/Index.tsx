@@ -34,7 +34,7 @@ export default function Index({ fields }: FieldsIndexProps) {
     const totalHectares = fields.reduce((sum, f) => sum + Number(f.area_hectares), 0);
 
     const handleDelete = (id: number, name: string) => {
-        if (confirm(`¿Estás seguro de eliminar la parcela "${name}"?`)) {
+        if (confirm(`¿Estás seguro de eliminar la campo "${name}"?`)) {
             router.delete(route('fields.destroy', id));
         }
     };
@@ -45,22 +45,22 @@ export default function Index({ fields }: FieldsIndexProps) {
                 <div className="flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            Parcelas
+                            Campos
                         </h2>
                         <p className="text-sm text-gray-500">
-                            {fields.length} parcelas • {totalHectares.toFixed(2)} hectáreas en total
+                            {fields.length} campos • {totalHectares.toFixed(2)} hectáreas en total
                         </p>
                     </div>
                     <Link
                         href={route('fields.create')}
                         className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 transition ease-in-out duration-150"
                     >
-                        + Nueva Parcela
+                        + Nuevo Campo
                     </Link>
                 </div>
             }
         >
-            <Head title="Parcelas" />
+            <Head title="Campos" />
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -68,7 +68,7 @@ export default function Index({ fields }: FieldsIndexProps) {
                     <div className="mb-6">
                         <input
                             type="text"
-                            placeholder="Buscar parcelas..."
+                            placeholder="Buscar campos..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
@@ -80,17 +80,17 @@ export default function Index({ fields }: FieldsIndexProps) {
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
                             <div className="text-4xl mb-4">🗺️</div>
                             <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                {search ? 'No se encontraron parcelas' : 'Sin parcelas registradas'}
+                                {search ? 'No se encontraron campos' : 'Sin campos registradas'}
                             </h3>
                             <p className="text-gray-500 mb-4">
-                                {search ? 'Intenta con otro término de búsqueda' : 'Comienza agregando tu primera parcela'}
+                                {search ? 'Intenta con otro término de búsqueda' : 'Comienza agregando tu primera campo'}
                             </p>
                             {!search && (
                                 <Link
                                     href={route('fields.create')}
                                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                                 >
-                                    Crear Primera Parcela
+                                    Crear Primer Campo
                                 </Link>
                             )}
                         </div>

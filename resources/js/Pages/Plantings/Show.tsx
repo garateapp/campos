@@ -125,7 +125,7 @@ export default function Show({ planting }: PlantingShowProps) {
                 </div>
             }
         >
-            <Head title={`Siembra ${planting.crop.name}`} />
+            <Head title={`Labor ${planting.crop.name}`} />
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -152,7 +152,7 @@ export default function Show({ planting }: PlantingShowProps) {
                             {activeTab === 'info' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div>
-                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Detalles del Cultivo</h3>
+                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Detalles del Cuartel</h3>
                                         <dl className="space-y-3">
                                             <DetailItem label="Familia" value={planting.crop.species?.family?.name || 'No especificada'} />
                                             <DetailItem label="Especie" value={planting.crop.species?.name || 'No especificada'} />
@@ -169,7 +169,7 @@ export default function Show({ planting }: PlantingShowProps) {
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Notas</h3>
                                         <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 min-h-[100px]">
-                                            {planting.notes || 'No hay notas para esta siembra.'}
+                                            {planting.notes || 'No hay notas para esta labor.'}
                                         </div>
                                     </div>
                                 </div>

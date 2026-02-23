@@ -16,6 +16,8 @@ class CostController extends Controller
      */
     public function index(Request $request): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $query = Cost::with(['field', 'planting.crop']);
 
         // Filter by type
@@ -31,6 +33,15 @@ class CostController extends Controller
         // Filter by field
         if ($request->has('field_id')) {
             $query->where('field_id', $request->field_id);
+        }
+
+        if ($fieldIds !== null) {
+            $query->where(function ($q) use ($fieldIds) {
+                $q->whereIn('field_id', $fieldIds)
+                    ->orWhereHas('planting', function ($planting) use ($fieldIds) {
+                        $planting->whereIn('field_id', $fieldIds);
+                    });
+            });
         }
 
         // Filter by date range
@@ -62,7 +73,9 @@ class CostController extends Controller
         $costsByCategory = $costs->groupBy('category')->map(fn ($group) => $group->sum('amount'));
 
         // Get fields for filter
-        $fields = Field::orderBy('name')->get(['id', 'name']);
+        $fields = Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name']);
 
         return Inertia::render('Costs/Index', [
             'costs' => $costs,
@@ -81,9 +94,14 @@ class CostController extends Controller
      */
     public function create(): Response
     {
-        $fields = Field::orderBy('name')->get(['id', 'name']);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        $fields = Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name']);
         $plantings = Planting::with('crop', 'field')
             ->orderByDesc('planted_date')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('field_id', $fieldIds))
             ->get()
             ->map(fn ($p) => [
                 'id' => $p->id,
@@ -103,6 +121,8 @@ class CostController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $validated = $request->validate([
             'type' => 'required|in:input,labor,equipment,transport,other',
             'category' => 'required|in:fixed,variable',
@@ -114,6 +134,10 @@ class CostController extends Controller
             'planting_id' => 'nullable|exists:plantings,id',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
 
         Cost::create([
             ...$validated,
@@ -128,9 +152,18 @@ class CostController extends Controller
      */
     public function edit(Cost $cost): Response
     {
-        $fields = Field::orderBy('name')->get(['id', 'name']);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $cost->field_id && !in_array($cost->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este costo.');
+        }
+
+        $fields = Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name']);
         $plantings = Planting::with('crop', 'field')
             ->orderByDesc('planted_date')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('field_id', $fieldIds))
             ->get()
             ->map(fn ($p) => [
                 'id' => $p->id,
@@ -153,6 +186,12 @@ class CostController extends Controller
      */
     public function update(Request $request, Cost $cost)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $cost->field_id && !in_array($cost->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este costo.');
+        }
+
         $validated = $request->validate([
             'type' => 'required|in:input,labor,equipment,transport,other',
             'category' => 'required|in:fixed,variable',
@@ -165,6 +204,10 @@ class CostController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
+
         $cost->update($validated);
 
         return redirect()->route('costs.index')->with('success', 'Costo actualizado.');
@@ -175,6 +218,12 @@ class CostController extends Controller
      */
     public function destroy(Cost $cost)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $cost->field_id && !in_array($cost->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este costo.');
+        }
+
         $cost->delete();
 
         return redirect()->route('costs.index')->with('success', 'Costo eliminado.');

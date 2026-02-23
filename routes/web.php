@@ -8,6 +8,7 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\CardAssignmentController;
 use App\Http\Controllers\CropController;
 use App\Http\Controllers\CostController;
+use App\Http\Controllers\CostCenterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FieldController;
 use App\Http\Controllers\InputController;
@@ -89,11 +90,11 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Fields (Parcelas)
+    // Fields (Campos)
     Route::resource('fields', FieldController::class);
     Route::get('/field-mapping', [FieldController::class, 'mapping'])->name('field-mapping');
 
-    // Crops (Cultivos)
+    // Crops (Cuarteles)
     Route::post('crops/import', [CropController::class, 'import'])->name('crops.import');
     Route::resource('crops', CropController::class);
     Route::resource('families', FamilyController::class);
@@ -104,6 +105,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::resource('input-categories', InputCategoryController::class);
     Route::resource('labor-types', LaborTypeController::class);
     Route::resource('unit-of-measures', UnitOfMeasureController::class);
+    Route::get('cost-centers/template', [CostCenterController::class, 'downloadTemplate'])->name('cost-centers.template');
+    Route::post('cost-centers/import', [CostCenterController::class, 'import'])->name('cost-centers.import');
+    Route::resource('cost-centers', CostCenterController::class)->only(['index']);
     Route::resource('contractors', ContractorController::class);
     Route::resource('workers', WorkerController::class);
     Route::resource('cards', CardController::class);
@@ -159,6 +163,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::get('/reports/application-logs', [\App\Http\Controllers\ReportController::class, 'applicationLogs'])->name('reports.application-logs');
     Route::get('/reports/harvest-daily', [\App\Http\Controllers\ReportController::class, 'harvestDaily'])->name('reports.harvest-daily');
     Route::get('/reports/harvest-collections', [\App\Http\Controllers\ReportController::class, 'harvestCollectionsDaily'])->name('reports.harvest-collections');
+    Route::get('/reports/attendance-daily', [\App\Http\Controllers\ReportController::class, 'attendanceDaily'])->name('reports.attendance-daily');
+    Route::get('/reports/attendance-monthly', [\App\Http\Controllers\ReportController::class, 'attendanceMonthly'])->name('reports.attendance-monthly');
 
     // Business Intelligence
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');

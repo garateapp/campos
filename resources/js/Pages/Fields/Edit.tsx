@@ -42,12 +42,12 @@ export default function Edit({ field, soilTypes }: FieldEditProps) {
                         ← Volver
                     </Link>
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Editar Parcela: {field.name}
+                        Editar Campo: {field.name}
                     </h2>
                 </div>
             }
         >
-            <Head title={`Editar Parcela: ${field.name}`} />
+            <Head title={`Editar Campo: ${field.name}`} />
 
             <div className="py-6">
                 <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
@@ -55,7 +55,7 @@ export default function Edit({ field, soilTypes }: FieldEditProps) {
                         <form onSubmit={submit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <InputLabel htmlFor="name" value="Nombre de la Parcela *" />
+                                    <InputLabel htmlFor="name" value="Nombre del Campo *" />
                                     <TextInput
                                         id="name"
                                         type="text"
@@ -155,7 +155,7 @@ export default function Edit({ field, soilTypes }: FieldEditProps) {
                                     Cancelar
                                 </Link>
                                 <PrimaryButton disabled={processing}>
-                                    {processing ? 'Guardando...' : 'Actualizar Parcela'}
+                                    {processing ? 'Guardando...' : 'Actualizar Campo'}
                                 </PrimaryButton>
                             </div>
                         </form>

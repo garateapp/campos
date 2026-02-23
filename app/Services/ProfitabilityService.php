@@ -11,18 +11,20 @@ use Illuminate\Support\Facades\DB;
 
 class ProfitabilityService
 {
-    public function getFieldProfitability(int $year)
+    public function getFieldProfitability(int $year, ?array $fieldIds = null)
     {
         // Get all fields with their latest planting for that year (or just current)
         $fields = Field::with(['plantings' => function($q) use ($year) {
             $q->where('season', 'like', "%{$year}%")
               ->with(['crop.species', 'crop.varietyEntity']);
-        }])->get();
+        }])
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get();
         
         $results = $fields->map(function ($field) use ($year) {
             // Get the specific planting for this year context
             $planting = $field->plantings->first();
-            $cropName = 'Sin Cultivo';
+            $cropName = 'Sin Cuartel';
             
             if ($planting && $planting->crop) {
                 $species = $planting->crop->species->name ?? $planting->crop->name;

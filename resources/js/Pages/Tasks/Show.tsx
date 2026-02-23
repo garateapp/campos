@@ -35,6 +35,7 @@ interface TaskShowProps {
         due_date: string;
         completed_date: string | null;
         field: { id: number; name: string } | null;
+        cost_center?: { id: number; code: string; name: string } | null;
         planting: { id: number; crop_name: string; season: string } | null;
         creator: User;
         assignments: Assignment[];
@@ -67,7 +68,7 @@ export default function Show({ task }: TaskShowProps) {
     });
 
     const handleStatusUpdate = (newStatus: string) => {
-        router.post(route('tasks.status', task.id), { status: newStatus });
+        router.patch(route('tasks.status', task.id), { status: newStatus });
     };
 
     const submitLog: FormEventHandler = (e) => {
@@ -134,6 +135,7 @@ export default function Show({ task }: TaskShowProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-50">
                                     <DetailBlock label="Vencimiento" value={task.due_date} subValue={task.is_overdue ? 'Vencida ⚠️' : undefined} subColor="text-red-600" />
                                     <DetailBlock label="Ubicación" value={task.field?.name || 'General'} subValue={task.planting ? `${task.planting.crop_name} (${task.planting.season})` : undefined} />
+                                    <DetailBlock label="Centro de Costo" value={task.cost_center ? `${task.cost_center.code} - ${task.cost_center.name}` : 'Sin asignar'} />
                                     <DetailBlock label="Asignado a" value={task.assignments.length > 0 ? task.assignments.map(a => a.user.name).join(', ') : 'Nadie asignado'} />
                                     <DetailBlock label="Creado por" value={task.creator.name} />
                                 </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Field;
 use App\Models\LaborPlanning;
 use App\Models\LaborType;
+use App\Models\CostCenter;
 use App\Models\Planting;
 use App\Models\Species;
 use App\Models\TaskType;
@@ -25,6 +26,8 @@ class LaborPlanningController extends Controller
     {
         $year = $request->input('year', date('Y'));
         $month = $request->input('month', date('n'));
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
 
         // Eager load new relationships
         $plannings = LaborPlanning::with([
@@ -40,9 +43,12 @@ class LaborPlanningController extends Controller
             ])
             ->where('year', $year)
             ->where('month', $month)
+            ->when($fieldIds !== null, function ($query) use ($fieldIds) {
+                $query->whereIn('field_id', $fieldIds);
+            })
             ->get()
             ->map(function ($p) {
-                // Fallback: tomar especie/variedades desde la siembra si no vienen seteadas
+                // Fallback: tomar especie/variedades desde la labor si no vienen seteadas
                 if (!$p->species && $p->planting?->crop?->species) {
                     $p->setRelation('species', $p->planting->crop->species);
                 }
@@ -85,8 +91,13 @@ class LaborPlanningController extends Controller
      */
     public function create(): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         return Inertia::render('LaborPlannings/Create', [
-            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'fields' => Field::orderBy('name')
+                ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+                ->get(['id', 'name']),
+            'costCenters' => CostCenter::orderBy('code')->get(['id', 'code', 'name', 'hectares', 'plants_count']),
             'species' => Species::orderBy('name')->get(['id', 'name']),
             'varieties' => Variety::orderBy('name')->get(['id', 'name', 'species_id']),
             'taskTypes' => TaskType::orderBy('name')->get(['id', 'name']),
@@ -101,11 +112,14 @@ class LaborPlanningController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $validated = $request->validate([
             'year' => 'required|integer',
             'month' => 'required|integer|between:1,12',
             'field_id' => 'nullable|exists:fields,id',
             'planting_id' => 'nullable|exists:plantings,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'species_id' => 'nullable|exists:species,id',
             'variety_ids' => 'nullable|array',
             'variety_ids.*' => 'integer|exists:varieties,id',
@@ -119,15 +133,31 @@ class LaborPlanningController extends Controller
             'labor_type_id' => 'required|exists:labor_types,id',
             'unit_of_measure_id' => 'nullable|exists:unit_of_measures,id',
             'num_jh_planned' => 'nullable|numeric',
+            'num_jh_estimated_2' => 'nullable|numeric',
             'avg_yield_planned' => 'nullable|numeric',
+            'avg_yield_estimated_2' => 'nullable|numeric',
             'total_jh_planned' => 'nullable|numeric',
+            'total_jh_estimated_2' => 'nullable|numeric',
             'effective_days_planned' => 'nullable|integer',
+            'effective_days_estimated_2' => 'nullable|integer',
             'value_planned' => 'nullable|numeric',
+            'value_estimated_2' => 'nullable|numeric',
             'total_value_planned' => 'nullable|numeric',
+            'total_value_estimated_2' => 'nullable|numeric',
         ]);
+
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
+
+        $costCenter = null;
+        if (!empty($validated['cost_center_id'])) {
+            $costCenter = CostCenter::find($validated['cost_center_id']);
+        }
 
         $laborPlanning = LaborPlanning::create([
             'company_id' => auth()->user()->company_id,
+            'cc' => $costCenter?->code ?? ($validated['cc'] ?? null),
             ...$validated,
         ]);
         $laborPlanning->varieties()->sync($this->collectVarietyIds($request));
@@ -136,16 +166,17 @@ class LaborPlanningController extends Controller
             return redirect()->route('labor-plannings.create', [
                 'year' => $validated['year'],
                 'month' => $validated['month'],
-                'field_id' => $validated['field_id'] ?? null,
-                'planting_id' => $validated['planting_id'] ?? null,
-                'species_id' => $validated['species_id'] ?? null,
+            'field_id' => $validated['field_id'] ?? null,
+            'planting_id' => $validated['planting_id'] ?? null,
+            'cost_center_id' => $validated['cost_center_id'] ?? null,
+            'species_id' => $validated['species_id'] ?? null,
                 'variety_ids' => $request->input('variety_ids') ?? ($validated['variety_id'] ? [$validated['variety_id']] : null),
                 'planting_year' => $validated['planting_year'] ?? null,
                 'cc' => $validated['cc'] ?? null,
-                'hectares' => $validated['hectares'] ?? null,
-                'num_plants' => $validated['num_plants'] ?? null,
-                'meters' => $validated['meters'] ?? null,
-            ])->with('success', 'Planificaci▋ creada. Puede continuar agregando labores para el mismo sector.');
+            'hectares' => $validated['hectares'] ?? null,
+            'num_plants' => $validated['num_plants'] ?? null,
+            'meters' => $validated['meters'] ?? null,
+        ])->with('success', 'Planificaci▋ creada. Puede continuar agregando labores para el mismo campo.');
         }
 
         return redirect()->route('labor-plannings.index', [
@@ -159,11 +190,20 @@ class LaborPlanningController extends Controller
      */
     public function edit(LaborPlanning $laborPlanning): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $laborPlanning->field_id && !in_array($laborPlanning->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta planificación.');
+        }
+
         $laborPlanning->load(['varieties', 'planting']);
 
         return Inertia::render('LaborPlannings/Edit', [
             'planning' => $laborPlanning,
-            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'fields' => Field::orderBy('name')
+                ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+                ->get(['id', 'name']),
+            'costCenters' => CostCenter::orderBy('code')->get(['id', 'code', 'name', 'hectares', 'plants_count']),
             'species' => Species::orderBy('name')->get(['id', 'name']),
             'varieties' => Variety::orderBy('name')->get(['id', 'name', 'species_id']),
             'taskTypes' => TaskType::orderBy('name')->get(['id', 'name']),
@@ -178,11 +218,18 @@ class LaborPlanningController extends Controller
      */
     public function update(Request $request, LaborPlanning $laborPlanning)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $laborPlanning->field_id && !in_array($laborPlanning->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta planificación.');
+        }
+
         $validated = $request->validate([
             'year' => 'required|integer',
             'month' => 'required|integer|between:1,12',
             'field_id' => 'nullable|exists:fields,id',
             'planting_id' => 'nullable|exists:plantings,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'species_id' => 'nullable|exists:species,id',
             'variety_ids' => 'nullable|array',
             'variety_ids.*' => 'integer|exists:varieties,id',
@@ -196,11 +243,17 @@ class LaborPlanningController extends Controller
             'labor_type_id' => 'required|exists:labor_types,id',
             'unit_of_measure_id' => 'nullable|exists:unit_of_measures,id',
             'num_jh_planned' => 'nullable|numeric',
+            'num_jh_estimated_2' => 'nullable|numeric',
             'avg_yield_planned' => 'nullable|numeric',
+            'avg_yield_estimated_2' => 'nullable|numeric',
             'total_jh_planned' => 'nullable|numeric',
+            'total_jh_estimated_2' => 'nullable|numeric',
             'effective_days_planned' => 'nullable|integer',
+            'effective_days_estimated_2' => 'nullable|integer',
             'value_planned' => 'nullable|numeric',
+            'value_estimated_2' => 'nullable|numeric',
             'total_value_planned' => 'nullable|numeric',
+            'total_value_estimated_2' => 'nullable|numeric',
             // Actuals
             'avg_yield_actual' => 'nullable|numeric',
             'total_jh_actual' => 'nullable|numeric',
@@ -209,8 +262,18 @@ class LaborPlanningController extends Controller
             'total_value_actual' => 'nullable|numeric',
         ]);
 
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
+
+        $costCenter = null;
+        if (!empty($validated['cost_center_id'])) {
+            $costCenter = CostCenter::find($validated['cost_center_id']);
+        }
+
         $laborPlanning->update([
             'company_id' => auth()->user()->company_id,
+            'cc' => $costCenter?->code ?? ($validated['cc'] ?? null),
             ...$validated,
         ]);
         $laborPlanning->varieties()->sync($this->collectVarietyIds($request));
@@ -226,6 +289,12 @@ class LaborPlanningController extends Controller
      */
     public function destroy(LaborPlanning $laborPlanning)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $laborPlanning->field_id && !in_array($laborPlanning->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta planificación.');
+        }
+
         $year = $laborPlanning->year;
         $month = $laborPlanning->month;
 
@@ -258,7 +327,10 @@ class LaborPlanningController extends Controller
      */
     private function plantingOptions()
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         return Planting::with(['field:id,name', 'crop.species', 'crop.varietyEntity'])
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('field_id', $fieldIds))
             ->orderByDesc('planted_date')
             ->get()
             ->map(fn ($p) => [
@@ -268,6 +340,7 @@ class LaborPlanningController extends Controller
                 'species_id' => $p->crop->species?->id,
                 'variety_id' => $p->crop->varietyEntity?->id,
                 'cc' => $p->cc,
+                'cost_center_id' => $p->cost_center_id,
                 'hectares' => $p->planted_area_hectares,
                 'num_plants' => $p->plants_count,
                 'season' => $p->season,
@@ -335,7 +408,7 @@ class LaborPlanningController extends Controller
         $year = trim($row['anio'] ?? '');
         $month = trim($row['mes'] ?? '');
         $fieldName = trim($row['campo'] ?? '');
-        $siembraId = trim($row['siembra_id'] ?? ($row['siembra'] ?? ''));
+        $laborId = trim($row['labor_id'] ?? ($row['labor'] ?? ''));
         $laborName = trim($row['labor'] ?? '');
         $tipoLaborName = trim($row['tipo_labor'] ?? '');
         $unidadMedidaName = trim($row['unidad_medida'] ?? '');
@@ -374,13 +447,13 @@ class LaborPlanningController extends Controller
         }
 
         $plantingId = null;
-        if ($siembraId !== '') {
-            if (!is_numeric($siembraId)) {
-                return ['status' => 'error', 'message' => "siembra_id debe ser numerico"];
+        if ($laborId !== '') {
+            if (!is_numeric($laborId)) {
+                return ['status' => 'error', 'message' => "labor_id debe ser numerico"];
             }
-            $planting = Planting::where('company_id', $companyId)->find($siembraId);
+            $planting = Planting::where('company_id', $companyId)->find($laborId);
             if (!$planting) {
-                return ['status' => 'error', 'message' => "Siembra {$siembraId} no encontrada"];
+                return ['status' => 'error', 'message' => "Labor {$laborId} no encontrada"];
             }
             $plantingId = $planting->id;
         }
@@ -408,6 +481,14 @@ class LaborPlanningController extends Controller
                 return ['status' => 'error', 'message' => "Unidad de medida '{$unidadMedidaName}' no encontrada"];
             }
             $unitId = $unit->id;
+        }
+
+        $costCenterId = null;
+        if ($cc !== '') {
+            $costCenter = CostCenter::where('company_id', $companyId)
+                ->whereRaw('LOWER(code) = ?', [mb_strtolower($cc)])
+                ->first();
+            $costCenterId = $costCenter?->id;
         }
 
         $numericFields = [
@@ -452,6 +533,7 @@ class LaborPlanningController extends Controller
             'month' => (int) $month,
             'field_id' => $fieldId,
             'planting_id' => $plantingId,
+            'cost_center_id' => $costCenterId,
             'task_type_id' => $taskType->id,
             'labor_type_id' => $laborType->id,
             'unit_of_measure_id' => $unitId,

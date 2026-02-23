@@ -16,6 +16,7 @@ class Task extends Model
     protected $fillable = [
         'company_id',
         'field_id',
+        'cost_center_id',
         'planting_id',
         'created_by',
         'title',
@@ -33,6 +34,7 @@ class Task extends Model
         'completed_date' => 'date',
         'task_type_id' => 'integer',
         'metadata' => 'array',
+        'cost_center_id' => 'integer',
     ];
 
     /**
@@ -49,6 +51,11 @@ class Task extends Model
     public function field(): BelongsTo
     {
         return $this->belongsTo(Field::class);
+    }
+
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class);
     }
 
     /**

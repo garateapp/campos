@@ -21,6 +21,7 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         $company = $user->company;
+        $fieldIds = $user->fieldScopeIds();
 
         // Get current season (e.g., "2024-2025")
         $currentYear = now()->year;
@@ -29,25 +30,48 @@ class DashboardController extends Controller
             : ($currentYear - 1) . "-{$currentYear}";
 
         // Field stats
-        $fieldsCount = Field::count();
-        $totalHectares = Field::sum('area_hectares');
+        $fieldsQuery = Field::query();
+        if ($fieldIds !== null) {
+            $fieldsQuery->whereIn('id', $fieldIds);
+        }
+        $fieldsCount = $fieldsQuery->count();
+        $totalHectares = $fieldsQuery->sum('area_hectares');
 
         // Active plantings
-        $activePlantings = Planting::whereNotIn('status', ['completed', 'failed'])->count();
+        $plantingsQuery = Planting::whereNotIn('status', ['completed', 'failed']);
+        if ($fieldIds !== null) {
+            $plantingsQuery->whereIn('field_id', $fieldIds);
+        }
+        $activePlantings = $plantingsQuery->count();
 
-        // Tasks stats
-        $pendingTasks = Task::where('status', 'pending')->count();
-        $overdueTasks = Task::where('status', '!=', 'completed')
+        // Tasks stats (respect assignment visibility)
+        $taskQuery = Task::query();
+        if (!$user->isSuperAdmin()) {
+            $taskQuery->whereHas('assignments', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
+        if ($fieldIds !== null) {
+            $taskQuery->where(function ($q) use ($fieldIds) {
+                $q->whereIn('field_id', $fieldIds)
+                    ->orWhereHas('planting', function ($planting) use ($fieldIds) {
+                        $planting->whereIn('field_id', $fieldIds);
+                    });
+            });
+        }
+
+        $pendingTasks = (clone $taskQuery)->where('status', 'pending')->count();
+        $overdueTasks = (clone $taskQuery)->where('status', '!=', 'completed')
             ->where('status', '!=', 'cancelled')
             ->where('due_date', '<', now()->startOfDay())
             ->count();
-        $tasksCompletedThisMonth = Task::where('status', 'completed')
+        $tasksCompletedThisMonth = (clone $taskQuery)->where('status', 'completed')
             ->whereMonth('completed_date', now()->month)
             ->whereYear('completed_date', now()->year)
             ->count();
 
         // Recent tasks
-        $recentTasks = Task::with(['field', 'creator'])
+        $recentTasks = (clone $taskQuery)->with(['field', 'creator'])
             ->orderBy('due_date')
             ->limit(5)
             ->get()
@@ -63,12 +87,23 @@ class DashboardController extends Controller
             ]);
 
         // Financial summary (current month)
-        $costsThisMonth = Cost::whereMonth('cost_date', now()->month)
+        $costsQuery = Cost::whereMonth('cost_date', now()->month)
             ->whereYear('cost_date', now()->year)
-            ->sum('amount');
+            ->when($fieldIds !== null, function ($q) use ($fieldIds) {
+                $q->whereIn('field_id', $fieldIds)
+                    ->orWhereHas('planting', function ($planting) use ($fieldIds) {
+                        $planting->whereIn('field_id', $fieldIds);
+                    });
+            });
+        $costsThisMonth = $costsQuery->sum('amount');
 
         $harvestsThisMonth = Harvest::whereMonth('harvest_date', now()->month)
             ->whereYear('harvest_date', now()->year)
+            ->when($fieldIds !== null, function ($q) use ($fieldIds) {
+                $q->whereHas('planting', function ($planting) use ($fieldIds) {
+                    $planting->whereIn('field_id', $fieldIds);
+                });
+            })
             ->get();
         
         $revenueThisMonth = $harvestsThisMonth->sum(fn ($h) => $h->quantity_kg * ($h->price_per_kg ?? 0));
@@ -77,6 +112,7 @@ class DashboardController extends Controller
         // Low stock alerts
         $lowStockInputs = Input::whereColumn('current_stock', '<=', 'min_stock_alert')
             ->whereNotNull('min_stock_alert')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('field_id', $fieldIds))
             ->get()
             ->map(fn ($input) => [
                 'id' => $input->id,

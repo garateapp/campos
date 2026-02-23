@@ -15,6 +15,7 @@ interface Planting {
     id: number;
     label: string;
     field_id: number;
+    cost_center_id?: number | null;
 }
 
 interface User {
@@ -27,9 +28,16 @@ interface TaskType {
     name: string;
 }
 
+interface CostCenter {
+    id: number;
+    code: string;
+    name: string;
+}
+
 interface TaskCreateProps {
     fields: Field[];
     plantings: Planting[];
+    costCenters: CostCenter[];
     users: User[];
     taskTypes: TaskType[];
 }
@@ -43,11 +51,12 @@ const priorityOptions = [
     { value: 'urgent', label: 'Urgente' },
 ];
 
-export default function Create({ fields, plantings, users, taskTypes }: TaskCreateProps) {
+export default function Create({ fields, plantings, costCenters, users, taskTypes }: TaskCreateProps) {
     const { data, setData, post, processing, errors } = useForm({
         title: '',
         description: '',
         field_id: '',
+        cost_center_id: '',
         planting_id: '',
         task_type_id: '',
         priority: 'medium',
@@ -64,6 +73,17 @@ export default function Create({ fields, plantings, users, taskTypes }: TaskCrea
             setFilteredPlantings(plantings.filter(p => p.field_id === parseInt(fieldId)));
         } else {
             setFilteredPlantings(plantings);
+        }
+    };
+
+    const handlePlantingChange = (plantingId: string) => {
+        setData('planting_id', plantingId);
+        const selected = plantings.find(p => p.id.toString() === plantingId);
+        if (selected?.field_id) {
+            setData('field_id', selected.field_id.toString());
+        }
+        if (selected?.cost_center_id) {
+            setData('cost_center_id', selected.cost_center_id.toString());
         }
     };
 
@@ -100,20 +120,20 @@ export default function Create({ fields, plantings, users, taskTypes }: TaskCrea
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                         <form onSubmit={submit} className="space-y-6">
                             <div>
-                                <InputLabel htmlFor="title" value="Título de la Tarea *" />
-                                <TextInput
-                                    id="title"
-                                    type="text"
-                                    name="title"
-                                    value={data.title}
+                                    <InputLabel htmlFor="title" value="Título de la Tarea *" />
+                                    <TextInput
+                                        id="title"
+                                        type="text"
+                                        name="title"
+                                        value={data.title}
                                     className="mt-1 block w-full"
                                     isFocused={true}
                                     onChange={(e) => setData('title', e.target.value)}
-                                    placeholder="Ej: Aplicar fertilizante en Parcela Norte"
-                                    required
-                                />
-                                <InputError message={errors.title} className="mt-2" />
-                            </div>
+                                        placeholder="Ej: Aplicar fertilizante en Campo Norte"
+                                        required
+                                    />
+                                    <InputError message={errors.title} className="mt-2" />
+                                </div>
 
                             <div>
                                 <InputLabel htmlFor="description" value="Descripción" />
@@ -181,7 +201,7 @@ export default function Create({ fields, plantings, users, taskTypes }: TaskCrea
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <InputLabel htmlFor="field_id" value="Parcela (opcional)" />
+                                    <InputLabel htmlFor="field_id" value="Campo (opcional)" />
                                     <select
                                         id="field_id"
                                         name="field_id"
@@ -189,7 +209,7 @@ export default function Create({ fields, plantings, users, taskTypes }: TaskCrea
                                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
                                         onChange={(e) => handleFieldChange(e.target.value)}
                                     >
-                                        <option value="">Sin parcela específica</option>
+                                        <option value="">Sin campo específico</option>
                                         {fields.map(field => (
                                             <option key={field.id} value={field.id}>{field.name}</option>
                                         ))}
@@ -198,21 +218,40 @@ export default function Create({ fields, plantings, users, taskTypes }: TaskCrea
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="planting_id" value="Siembra (opcional)" />
+                                    <InputLabel htmlFor="planting_id" value="Labor (opcional)" />
                                     <select
                                         id="planting_id"
                                         name="planting_id"
                                         value={data.planting_id}
                                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
-                                        onChange={(e) => setData('planting_id', e.target.value)}
+                                        onChange={(e) => handlePlantingChange(e.target.value)}
                                     >
-                                        <option value="">Sin siembra específica</option>
+                                        <option value="">Sin labor específica</option>
                                         {filteredPlantings.map(planting => (
                                             <option key={planting.id} value={planting.id}>{planting.label}</option>
                                         ))}
                                     </select>
                                     <InputError message={errors.planting_id} className="mt-2" />
                                 </div>
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="cost_center_id" value="Centro de Costo (opcional)" />
+                                <select
+                                    id="cost_center_id"
+                                    name="cost_center_id"
+                                    value={data.cost_center_id}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    onChange={(e) => setData('cost_center_id', e.target.value)}
+                                >
+                                    <option value="">Seleccionar Centro de Costo...</option>
+                                    {costCenters.map((cc) => (
+                                        <option key={cc.id} value={cc.id}>
+                                            {cc.code} - {cc.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={(errors as any).cost_center_id} className="mt-2" />
                             </div>
 
                             {/* Assigned Users */}

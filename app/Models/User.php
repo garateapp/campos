@@ -7,8 +7,10 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Field;
 
 class User extends Authenticatable
 {
@@ -25,6 +27,7 @@ class User extends Authenticatable
         'email',
         'password',
         'company_id',
+        'field_id',
         'role_id',
         'phone',
         'is_active',
@@ -52,6 +55,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'field_id' => 'integer',
         ];
     }
 
@@ -61,6 +65,16 @@ class User extends Authenticatable
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function field(): BelongsTo
+    {
+        return $this->belongsTo(Field::class);
+    }
+
+    public function fields(): BelongsToMany
+    {
+        return $this->belongsToMany(Field::class)->withTimestamps();
     }
 
     /**
@@ -109,6 +123,33 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->role && $this->role->name === 'superadmin';
+    }
+
+    public function isFieldScoped(): bool
+    {
+        if (!$this->role) {
+            return false;
+        }
+
+        return in_array($this->role->name, ['field_worker', 'crop_manager'], true);
+    }
+
+    public function fieldScopeIds(): ?array
+    {
+        if ($this->isSuperAdmin()) {
+            return null;
+        }
+
+        if ($this->isFieldScoped()) {
+            return $this->field_id ? [$this->field_id] : [];
+        }
+
+        if (in_array($this->role?->name, ['admin', 'agronomist'], true)) {
+            $ids = $this->fields()->pluck('fields.id')->all();
+            return $ids ?: null;
+        }
+
+        return null;
     }
 
     /**

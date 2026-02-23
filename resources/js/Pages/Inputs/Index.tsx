@@ -145,7 +145,7 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
                                 </select>
                             </div>
                             <div className="w-full sm:w-48">
-                                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Parcela</label>
+                                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Campo</label>
                                 <select
                                     value={fieldFilter}
                                     onChange={(e) => {
@@ -154,7 +154,7 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
                                     }}
                                     className="w-full border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500"
                                 >
-                                    <option value="all">Todas las parcelas</option>
+                                    <option value="all">Todas las campos</option>
                                     <option value="none">Bodega General</option>
                                     {fields.map(field => (
                                         <option key={field.id} value={field.id}>{field.name}</option>
@@ -212,8 +212,8 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
                     )}
 
                     <div className="mb-6 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-md p-3">
-                        Formato CSV esperado: <code>nombre,categoria,unidad,stock_actual,alerta_minima,costo_unitario,fecha_factura,periodo_devolucion_dias,minimo_devolucion,fecha_vencimiento,parcela,notas</code>. Usa nombres (no IDs).
-                        La parcela puede quedar vacia o ser <code>Bodega General</code>.
+                        Formato CSV esperado: <code>nombre,categoria,unidad,stock_actual,alerta_minima,costo_unitario,fecha_factura,periodo_devolucion_dias,minimo_devolucion,fecha_vencimiento,campo,notas</code>. Usa nombres (no IDs).
+                        La campo puede quedar vacia o ser <code>Bodega General</code>.
                     </div>
 
                     {/* Inputs Grid */}
@@ -295,7 +295,7 @@ export default function Index({ inputs, filters, fields, categories }: InputsInd
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Mover Insumo</h3>
-                        <p className="text-sm text-gray-600 mb-3">Selecciona la parcela destino (o deja vacío para Bodega General).</p>
+                        <p className="text-sm text-gray-600 mb-3">Selecciona la campo destino (o deja vacío para Bodega General).</p>
                         <select
                             value={transferFieldId}
                             onChange={(e) => setTransferFieldId(e.target.value)}

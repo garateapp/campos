@@ -65,7 +65,7 @@ export default function Index({ costs, summary, fields, filters }: CostsIndexPro
                             Gestión de Costos
                         </h2>
                         <p className="text-sm text-gray-500">
-                            Control de gastos por parcela, cultivo y categoría
+                            Control de gastos por campo, cuartel y categoría
                         </p>
                     </div>
                     <Link
@@ -124,7 +124,7 @@ export default function Index({ costs, summary, fields, filters }: CostsIndexPro
                             </select>
                         </div>
                         <div className="w-full sm:w-48">
-                            <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Parcela</label>
+                            <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Campo</label>
                             <select
                                 value={fieldFilter}
                                 onChange={(e) => {
@@ -148,7 +148,7 @@ export default function Index({ costs, summary, fields, filters }: CostsIndexPro
                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Descripción</th>
                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo/Categoaría</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Lugar / Cultivo</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Lugar / Cuartel</th>
                                         <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Monto</th>
                                         <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
                                     </tr>

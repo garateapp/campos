@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\CostCenter;
 use App\Models\Crop;
 use App\Models\Field;
 use App\Models\Harvest;
@@ -23,8 +24,14 @@ class PlantingController extends Controller
      */
     public function index(Request $request): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $query = Planting::with(['field', 'crop.species.family', 'crop.varietyEntity'])
             ->withSum('harvests', 'quantity_kg');
+
+        if ($fieldIds !== null) {
+            $query->whereIn('field_id', $fieldIds);
+        }
 
         // Filter by season
         if ($request->has('season')) {
@@ -54,6 +61,7 @@ class PlantingController extends Controller
             'expected_harvest_date' => $p->expected_harvest_date?->format('Y-m-d'),
             'planted_area_hectares' => $p->planted_area_hectares,
             'cc' => $p->cc,
+            'cost_center_code' => $p->costCenter?->code,
             'status' => $p->status,
             'expected_yield_kg' => $p->expected_yield_kg,
             'total_harvested_kg' => $p->harvests_sum_quantity_kg ?? 0,
@@ -123,7 +131,7 @@ class PlantingController extends Controller
             return back()->with('error', 'Fallo inesperado: ' . $e->getMessage());
         }
 
-        return back()->with('success', "Importacion de siembras exitosa. Creadas: {$created} de {$total}");
+        return back()->with('success', "Importacion de labores exitosa. Creadas: {$created} de {$total}");
     }
 
     /**
@@ -131,12 +139,19 @@ class PlantingController extends Controller
      */
     public function create(): Response
     {
-        $fields = Field::where('status', 'active')->orderBy('name')->get(['id', 'name', 'area_hectares']);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        $fields = Field::where('status', 'active')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->orderBy('name')
+            ->get(['id', 'name', 'area_hectares']);
         $crops = Crop::orderBy('name')->get(['id', 'name', 'variety', 'days_to_harvest']);
+        $costCenters = CostCenter::orderBy('code')->get(['id', 'code', 'name', 'hectares', 'plants_count']);
 
         return Inertia::render('Plantings/Create', [
             'fields' => $fields,
             'crops' => $crops,
+            'costCenters' => $costCenters,
         ]);
     }
 
@@ -145,8 +160,11 @@ class PlantingController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $validated = $request->validate([
             'field_id' => 'required|exists:fields,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'crop_id' => 'required|exists:crops,id',
             'season' => 'required|string|max:20',
             'planted_date' => 'required|date',
@@ -158,12 +176,27 @@ class PlantingController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
+
+        $costCenter = null;
+        if (!empty($validated['cost_center_id'])) {
+            $costCenter = CostCenter::find($validated['cost_center_id']);
+        } elseif (!empty($validated['cc'])) {
+            $costCenter = CostCenter::where('company_id', auth()->user()->company_id)
+                ->whereRaw('LOWER(code) = ?', [mb_strtolower($validated['cc'])])
+                ->first();
+            $validated['cost_center_id'] = $costCenter?->id;
+        }
+
         Planting::create([
             'company_id' => auth()->user()->company_id,
+            'cc' => $costCenter?->code ?? ($validated['cc'] ?? null),
             ...$validated,
         ]);
 
-        return redirect()->route('plantings.index')->with('success', 'Siembra registrada exitosamente.');
+        return redirect()->route('plantings.index')->with('success', 'Labor registrada exitosamente.');
     }
 
     /**
@@ -171,7 +204,13 @@ class PlantingController extends Controller
      */
     public function show(Planting $planting): Response
     {
-        $planting->load(['field', 'crop.species.family', 'crop.varietyEntity', 'activities.performer', 'harvests']);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($planting->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta labor.');
+        }
+
+        $planting->load(['field', 'crop.species.family', 'crop.varietyEntity', 'activities.performer', 'harvests', 'costCenter']);
 
         return Inertia::render('Plantings/Show', [
             'planting' => [
@@ -183,6 +222,7 @@ class PlantingController extends Controller
                 'expected_harvest_date' => $planting->expected_harvest_date?->format('Y-m-d'),
                 'planted_area_hectares' => $planting->planted_area_hectares,
                 'cc' => $planting->cc,
+                'cost_center' => $planting->costCenter,
                 'plants_count' => $planting->plants_count,
                 'status' => $planting->status,
                 'expected_yield_kg' => $planting->expected_yield_kg,
@@ -213,8 +253,17 @@ class PlantingController extends Controller
      */
     public function edit(Planting $planting): Response
     {
-        $fields = Field::orderBy('name')->get(['id', 'name', 'area_hectares']);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($planting->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta labor.');
+        }
+
+        $fields = Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name', 'area_hectares']);
         $crops = Crop::orderBy('name')->get(['id', 'name', 'variety']);
+        $costCenters = CostCenter::orderBy('code')->get(['id', 'code', 'name', 'hectares', 'plants_count']);
 
         return Inertia::render('Plantings/Edit', [
             'planting' => array_merge($planting->toArray(), [
@@ -223,6 +272,7 @@ class PlantingController extends Controller
             ]),
             'fields' => $fields,
             'crops' => $crops,
+            'costCenters' => $costCenters,
         ]);
     }
 
@@ -231,8 +281,15 @@ class PlantingController extends Controller
      */
     public function update(Request $request, Planting $planting)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($planting->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta labor.');
+        }
+
         $validated = $request->validate([
             'field_id' => 'required|exists:fields,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'crop_id' => 'required|exists:crops,id',
             'season' => 'required|string|max:20',
             'planted_date' => 'required|date',
@@ -245,12 +302,27 @@ class PlantingController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
+
+        $costCenter = null;
+        if (!empty($validated['cost_center_id'])) {
+            $costCenter = CostCenter::find($validated['cost_center_id']);
+        } elseif (!empty($validated['cc'])) {
+            $costCenter = CostCenter::where('company_id', auth()->user()->company_id)
+                ->whereRaw('LOWER(code) = ?', [mb_strtolower($validated['cc'])])
+                ->first();
+            $validated['cost_center_id'] = $costCenter?->id;
+        }
+
         $planting->update([
             'company_id' => auth()->user()->company_id,
+            'cc' => $costCenter?->code ?? ($validated['cc'] ?? null),
             ...$validated,
         ]);
 
-        return redirect()->route('plantings.show', $planting)->with('success', 'Siembra actualizada.');
+        return redirect()->route('plantings.show', $planting)->with('success', 'Labor actualizada.');
     }
 
     /**
@@ -258,9 +330,15 @@ class PlantingController extends Controller
      */
     public function destroy(Planting $planting)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($planting->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta labor.');
+        }
+
         $planting->delete();
 
-        return redirect()->route('plantings.index')->with('success', 'Siembra eliminada.');
+        return redirect()->route('plantings.index')->with('success', 'Labor eliminada.');
     }
 
     private function processImportRow(array $row, int $companyId, array $allowedStatuses): array
@@ -288,7 +366,7 @@ class PlantingController extends Controller
 
         $crop = $this->findByName(Crop::class, $cropName, $companyId);
         if (!$crop) {
-            return ['status' => 'error', 'message' => "Cultivo '{$cropName}' no encontrado"];
+            return ['status' => 'error', 'message' => "Cuartel '{$cropName}' no encontrado"];
         }
 
         if (!in_array($status, $allowedStatuses)) {
@@ -297,7 +375,7 @@ class PlantingController extends Controller
 
         $plantedAt = $this->parseDate($plantedDate, 'planted_date');
         if ($plantedAt === false) {
-            return ['status' => 'error', 'message' => "Fecha de siembra invalida: {$plantedDate}"];
+            return ['status' => 'error', 'message' => "Fecha de labor invalida: {$plantedDate}"];
         }
 
         $expectedAt = null;

@@ -81,7 +81,7 @@ export default function Index({ families }: FamiliesIndexProps) {
                                 Gestionar Familias
                             </h2>
                             <p className="text-sm text-gray-500">
-                                Clasificación superior de cultivos (Carozos, Pomáceas, etc.)
+                                Clasificación superior de cuarteles (Carozos, Pomáceas, etc.)
                             </p>
                         </div>
                     </div>
@@ -94,7 +94,7 @@ export default function Index({ families }: FamiliesIndexProps) {
                 </div>
             }
         >
-            <Head title="Familias de Cultivos" />
+            <Head title="Familias de Cuarteles" />
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -151,7 +151,7 @@ export default function Index({ families }: FamiliesIndexProps) {
             <Modal show={isCreateModalOpen} onClose={closeModal} maxWidth="md">
                 <form onSubmit={submit} className="p-6">
                     <h2 className="text-lg font-medium text-gray-900 mb-4">
-                        {editingFamily ? 'Editar Familia' : 'Nueva Familia de Cultivo'}
+                        {editingFamily ? 'Editar Familia' : 'Nueva Familia de Cuartel'}
                     </h2>
 
                     <div>

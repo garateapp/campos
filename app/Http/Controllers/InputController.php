@@ -22,6 +22,8 @@ class InputController extends Controller
      */
     public function index(Request $request): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $query = Input::with('field');
 
         // Filter by category
@@ -40,6 +42,10 @@ class InputController extends Controller
             $query->where('field_id', $request->field_id);
         }
 
+        if ($fieldIds !== null) {
+            $query->whereIn('field_id', $fieldIds);
+        }
+
         $inputs = $query->orderBy('name')->get()->map(fn ($input) => [
             'id' => $input->id,
             'name' => $input->name,
@@ -56,7 +62,9 @@ class InputController extends Controller
 
         return Inertia::render('Inputs/Index', [
             'inputs' => $inputs,
-            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'fields' => Field::orderBy('name')
+                ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+                ->get(['id', 'name']),
             'categories' => InputCategory::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['input_category_id', 'low_stock', 'field_id']),
         ]);
@@ -132,7 +140,7 @@ class InputController extends Controller
             'periodo_devolucion_dias',
             'minimo_devolucion',
             'fecha_vencimiento',
-            'parcela',
+            'campo',
             'notas',
         ];
         $csv = implode(',', $headers) . "\n";
@@ -148,9 +156,13 @@ class InputController extends Controller
      */
     public function create(): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         return Inertia::render('Inputs/Form', [
             'input' => null,
-            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'fields' => Field::orderBy('name')
+                ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+                ->get(['id', 'name']),
             'categories' => InputCategory::orderBy('name')->get(['id', 'name']),
         ]);
     }
@@ -160,6 +172,8 @@ class InputController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'field_id' => 'nullable|exists:fields,id',
@@ -174,6 +188,10 @@ class InputController extends Controller
             'expiration_date' => 'nullable|date',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
 
         $input = Input::create(array_merge($validated, [
             'company_id' => auth()->user()->company_id,
@@ -196,6 +214,12 @@ class InputController extends Controller
      */
     public function show(Input $input): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $input->field_id && !in_array($input->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este insumo.');
+        }
+
         $input->load('field');
         $recentUsages = InputUsage::where('input_id', $input->id)
             ->with('field')
@@ -231,7 +255,9 @@ class InputController extends Controller
                     'created_at' => $lot->created_at->format('Y-m-d'),
                 ]),
             'recentUsages' => $recentUsages,
-            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'fields' => Field::orderBy('name')
+                ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -240,12 +266,20 @@ class InputController extends Controller
      */
     public function edit(Input $input): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $input->field_id && !in_array($input->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este insumo.');
+        }
+
         return Inertia::render('Inputs/Form', [
             'input' => array_merge($input->toArray(), [
                 'invoice_date' => optional($input->invoice_date)->format('Y-m-d'),
                 'expiration_date' => optional($input->expiration_date)->format('Y-m-d'),
             ]),
-            'fields' => Field::orderBy('name')->get(['id', 'name']),
+            'fields' => Field::orderBy('name')
+                ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+                ->get(['id', 'name']),
             'categories' => InputCategory::orderBy('name')->get(['id', 'name']),
         ]);
     }
@@ -255,6 +289,12 @@ class InputController extends Controller
      */
     public function update(Request $request, Input $input)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $input->field_id && !in_array($input->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este insumo.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'field_id' => 'nullable|exists:fields,id',
@@ -269,6 +309,10 @@ class InputController extends Controller
             'expiration_date' => 'nullable|date',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
 
         $originalStock = (float) $input->current_stock;
         $newStock = (float) $validated['current_stock'];
@@ -324,6 +368,12 @@ class InputController extends Controller
      */
     public function destroy(Input $input)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $input->field_id && !in_array($input->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este insumo.');
+        }
+
         $input->delete();
 
         return redirect()->route('inputs.index')->with('success', 'Insumo eliminado.');
@@ -334,6 +384,12 @@ class InputController extends Controller
      */
     public function recordUsage(Request $request, Input $input)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $input->field_id && !in_array($input->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este insumo.');
+        }
+
         $validated = $request->validate([
             'usage_date' => 'required|date',
             'quantity' => 'required|numeric|min:0.01',
@@ -341,6 +397,10 @@ class InputController extends Controller
             'activity_id' => 'nullable|exists:activities,id',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
 
         $quantity = (float) $validated['quantity'];
 
@@ -405,21 +465,31 @@ class InputController extends Controller
     }
 
     /**
-     * Transfer an input to another field (parcela).
+     * Transfer an input to another field (campo).
      */
     public function transfer(Request $request, Input $input)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $input->field_id && !in_array($input->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este insumo.');
+        }
+
         $validated = $request->validate([
             'field_id' => 'nullable|exists:fields,id',
             'quantity' => 'required|numeric|min:0.01',
         ]);
+
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
 
         $destinationFieldId = $validated['field_id'] ?? null;
         $quantity = (float) $validated['quantity'];
 
         // Si no cambia, no hacemos nada
         if ($destinationFieldId === $input->field_id) {
-            return redirect()->back()->with('warning', 'El insumo ya est  en esa parcela.');
+            return redirect()->back()->with('warning', 'El insumo ya está en ese campo.');
         }
 
         if ($quantity > $input->current_stock) {
@@ -493,7 +563,7 @@ class InputController extends Controller
             return redirect()->back()->with('error', 'Fallo inesperado al mover el insumo.');
         }
 
-        return redirect()->back()->with('success', 'Insumo movido a la nueva parcela.');
+        return redirect()->back()->with('success', 'Insumo movido al nuevo campo.');
     }
 private function processImportRow(array $row, int $companyId): array
     {
@@ -507,7 +577,7 @@ private function processImportRow(array $row, int $companyId): array
         $returnPeriodDays = $this->getRowValue($row, ['periodo_devolucion_dias', 'return_period_days']);
         $returnMinQuantity = $this->getRowValue($row, ['minimo_devolucion', 'return_min_quantity']);
         $expirationDate = $this->getRowValue($row, ['fecha_vencimiento', 'expiration_date']);
-        $fieldName = $this->getRowValue($row, ['parcela', 'field_name', 'field']);
+        $fieldName = $this->getRowValue($row, ['campo', 'parcela', 'field_name', 'field']);
         $notes = $this->getRowValue($row, ['notas', 'notes']);
 
         if ($name === '' || $categoryName === '' || $unit === '' || $currentStock === '') {
@@ -553,7 +623,7 @@ private function processImportRow(array $row, int $companyId): array
         if ($fieldName !== '' && !in_array(mb_strtolower($fieldName), ['bodega general', 'bodega', 'general'], true)) {
             $field = $this->findByName(Field::class, $fieldName, $companyId);
             if (!$field) {
-                return ['status' => 'error', 'message' => "Parcela '{$fieldName}' no encontrada"];
+                return ['status' => 'error', 'message' => "Campo '{$fieldName}' no encontrada"];
             }
         }
 

@@ -31,17 +31,25 @@ interface Field {
     name: string;
 }
 
+interface CostCenter {
+    id: number;
+    code: string;
+    name: string;
+}
+
 interface CropFormProps {
     crop: any;
     families: Family[];
     fields: Field[];
+    costCenters: CostCenter[];
 }
 
-export default function Form({ crop, families, fields }: CropFormProps) {
+export default function Form({ crop, families, fields, costCenters }: CropFormProps) {
     const isEditing = !!crop;
 
     const { data, setData, post, patch, processing, errors } = useForm({
         field_id: crop?.field_id?.toString() || '',
+        cost_center_id: crop?.cost_center_id?.toString() || '',
         family_id: crop?.family_id?.toString() || '',
         species_id: crop?.species_id?.toString() || '',
         variety_ids: (crop?.variety_ids || []).map((id: number | string) => id.toString()),
@@ -114,12 +122,12 @@ export default function Form({ crop, families, fields }: CropFormProps) {
                         ← Volver
                     </Link>
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        {isEditing ? 'Editar Cultivo' : 'Nuevo Cultivo'}
+                        {isEditing ? 'Editar Cuartel' : 'Nuevo Cuartel'}
                     </h2>
                 </div>
             }
         >
-            <Head title={isEditing ? 'Editar Cultivo' : 'Nuevo Cultivo'} />
+            <Head title={isEditing ? 'Editar Cuartel' : 'Nuevo Cuartel'} />
 
             <div className="py-6">
                 <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
@@ -131,7 +139,7 @@ export default function Form({ crop, families, fields }: CropFormProps) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="field_id" value="Parcela" />
+                                    <InputLabel htmlFor="field_id" value="Campo" />
                                     <select
                                         id="field_id"
                                         name="field_id"
@@ -139,12 +147,31 @@ export default function Form({ crop, families, fields }: CropFormProps) {
                                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
                                         onChange={(e) => setData('field_id', e.target.value)}
                                     >
-                                        <option value="">Seleccionar Parcela (Opcional)...</option>
+                                        <option value="">Seleccionar Campo (Opcional)...</option>
                                         {fields.map(field => (
                                             <option key={field.id} value={field.id}>{field.name}</option>
                                         ))}
                                     </select>
                                     <InputError message={errors.field_id} className="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="cost_center_id" value="Centro de Costo" />
+                                    <select
+                                        id="cost_center_id"
+                                        name="cost_center_id"
+                                        value={data.cost_center_id}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
+                                        onChange={(e) => setData('cost_center_id', e.target.value)}
+                                    >
+                                        <option value="">Seleccionar Centro de Costo...</option>
+                                        {costCenters.map((cc) => (
+                                            <option key={cc.id} value={cc.id}>
+                                                {cc.code} - {cc.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.cost_center_id} className="mt-2" />
                                 </div>
 
                                 <div>
@@ -206,7 +233,7 @@ export default function Form({ crop, families, fields }: CropFormProps) {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <InputLabel htmlFor="name" value="Nombre del Cultivo (opcional)" />
+                                    <InputLabel htmlFor="name" value="Nombre del Cuartel (opcional)" />
                                     <TextInput
                                         id="name"
                                         type="text"
@@ -268,7 +295,7 @@ export default function Form({ crop, families, fields }: CropFormProps) {
                                     Cancelar
                                 </Link>
                                 <PrimaryButton disabled={processing}>
-                                    {processing ? 'Guardando...' : 'Guardar Cultivo'}
+                                    {processing ? 'Guardando...' : 'Guardar Cuartel'}
                                 </PrimaryButton>
                             </div>
                         </form>

@@ -57,7 +57,7 @@ export default function Index({ profitability, filters }: IndexProps) {
                             Análisis de Rentabilidad
                         </h2>
                         <p className="text-sm text-gray-500">
-                            Márgenes por Sector y Cultivo (Año {year})
+                            Márgenes por Campo y Cuartel (Año {year})
                         </p>
                     </div>
                     <div>
@@ -106,13 +106,13 @@ export default function Index({ profitability, filters }: IndexProps) {
                     {/* Detailed Table */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-100">
-                            <h3 className="font-bold text-gray-800">Detalle por Sector</h3>
+                            <h3 className="font-bold text-gray-800">Detalle por Campo</h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sector / Cultivo</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campo / Cuartel</th>
                                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Superficie</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-blue-600 uppercase tracking-wider bg-blue-50/30">Ingresos (+)</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-red-600 uppercase tracking-wider bg-red-50/30">Labor (-)</th>

@@ -55,7 +55,7 @@ export default function Show({ field }: FieldShowProps) {
     const [activeTab, setActiveTab] = useState<'overview' | 'plantings' | 'tasks'>('overview');
 
     const handleDelete = () => {
-        if (confirm('¿Estás seguro de que deseas eliminar esta parcela? Esta acción no se puede deshacer.')) {
+        if (confirm('¿Estás seguro de que deseas eliminar esta campo? Esta acción no se puede deshacer.')) {
             router.delete(route('fields.destroy', field.id));
         }
     };
@@ -94,7 +94,7 @@ export default function Show({ field }: FieldShowProps) {
                 </div>
             }
         >
-            <Head title={`Parcela: ${field.name}`} />
+            <Head title={`Campo: ${field.name}`} />
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -106,7 +106,7 @@ export default function Show({ field }: FieldShowProps) {
                         </div>
                         {field.plantings.some(p => !['completed', 'failed'].includes(p.status)) && (
                             <div className="px-4 py-2 rounded-lg bg-green-50 text-green-700 flex items-center gap-2 font-bold border border-green-100">
-                                🌱 Con cultivos activos
+                                🌱 Con cuarteles activos
                             </div>
                         )}
                     </div>
@@ -116,7 +116,7 @@ export default function Show({ field }: FieldShowProps) {
                         <div className="border-b border-gray-100">
                             <nav className="flex">
                                 <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} label="Resumen" />
-                                <TabButton active={activeTab === 'plantings'} onClick={() => setActiveTab('plantings')} label="Historial de Cultivos" count={field.plantings.length} />
+                                <TabButton active={activeTab === 'plantings'} onClick={() => setActiveTab('plantings')} label="Historial de Cuarteles" count={field.plantings.length} />
                                 <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} label="Tareas Recientes" count={field.recent_tasks.length} />
                             </nav>
                         </div>
@@ -134,14 +134,14 @@ export default function Show({ field }: FieldShowProps) {
 
                                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mt-8 mb-4">Notas</h3>
                                         <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 min-h-[100px]">
-                                            {field.notes || 'No hay notas para esta parcela.'}
+                                            {field.notes || 'No hay notas para esta campo.'}
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Cultivo Actual</h3>
+                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Cuartel Actual</h3>
                                         {field.plantings.filter(p => !['completed', 'failed'].includes(p.status)).length === 0 ? (
                                             <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-xl">
-                                                <p className="text-gray-400 text-sm">No hay cultivos activos en esta parcela.</p>
+                                                <p className="text-gray-400 text-sm">No hay cuarteles activos en esta campo.</p>
                                                 <Link href={route('plantings.create', { field_id: field.id })} className="text-green-600 text-sm font-bold mt-2 inline-block">
                                                     + Plantar algo aquí
                                                 </Link>
@@ -182,7 +182,7 @@ export default function Show({ field }: FieldShowProps) {
                                             <table className="min-w-full divide-y divide-gray-200">
                                                 <thead className="bg-gray-50">
                                                     <tr>
-                                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Cultivo</th>
+                                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Cuartel</th>
                                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Temporada</th>
                                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Estado</th>
                                                         <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Cosecha Total</th>
@@ -216,7 +216,7 @@ export default function Show({ field }: FieldShowProps) {
                             {activeTab === 'tasks' && (
                                 <div className="space-y-4">
                                     {field.recent_tasks.length === 0 ? (
-                                        <p className="text-center text-gray-500 py-8">No hay tareas recientes para esta parcela.</p>
+                                        <p className="text-center text-gray-500 py-8">No hay tareas recientes para esta campo.</p>
                                     ) : (
                                         field.recent_tasks.map(task => (
                                             <Link
@@ -237,7 +237,7 @@ export default function Show({ field }: FieldShowProps) {
                                     )}
                                     <div className="pt-4 border-t flex justify-center">
                                         <Link href={route('tasks.index', { field_id: field.id })} className="text-sm font-bold text-green-600 hover:underline">
-                                            Ver todas las tareas de la parcela
+                                            Ver todas las tareas de la campo
                                         </Link>
                                     </div>
                                 </div>

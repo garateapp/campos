@@ -184,7 +184,7 @@ export default function Form({ cost, fields, plantings }: CostFormProps) {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <InputLabel htmlFor="field_id" value="Asignar a Parcela (opcional)" />
+                                    <InputLabel htmlFor="field_id" value="Asignar a Campo (opcional)" />
                                     <select
                                         id="field_id"
                                         name="field_id"
@@ -192,7 +192,7 @@ export default function Form({ cost, fields, plantings }: CostFormProps) {
                                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
                                         onChange={(e) => handleFieldChange(e.target.value)}
                                     >
-                                        <option value="">Gasto General (Sin parcela)</option>
+                                        <option value="">Gasto General (Sin campo)</option>
                                         {fields.map(f => (
                                             <option key={f.id} value={f.id}>{f.name}</option>
                                         ))}
@@ -201,7 +201,7 @@ export default function Form({ cost, fields, plantings }: CostFormProps) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="planting_id" value="Asignar a Siembra (opcional)" />
+                                    <InputLabel htmlFor="planting_id" value="Asignar a Labor (opcional)" />
                                     <select
                                         id="planting_id"
                                         name="planting_id"
@@ -210,7 +210,7 @@ export default function Form({ cost, fields, plantings }: CostFormProps) {
                                         onChange={(e) => setData('planting_id', e.target.value)}
                                         disabled={!data.field_id}
                                     >
-                                        <option value="">Sin siembra específica</option>
+                                        <option value="">Sin labor específica</option>
                                         {filteredPlantings.map(p => (
                                             <option key={p.id} value={p.id}>{p.label}</option>
                                         ))}

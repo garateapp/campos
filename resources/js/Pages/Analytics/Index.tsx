@@ -160,7 +160,7 @@ export default function Index({ trends, efficiency, costs, filters }: AnalyticsP
                             <p className="text-xs text-gray-400 mt-1">Basado en costos directos</p>
                         </div>
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                            <p className="text-sm text-gray-500 font-medium uppercase">Sector Más Eficiente</p>
+                            <p className="text-sm text-gray-500 font-medium uppercase">Campo Más Eficiente</p>
                             <p className="text-3xl font-bold text-orange-600">
                                 {efficiency[0]?.field || 'N/A'}
                             </p>
@@ -188,7 +188,7 @@ export default function Index({ trends, efficiency, costs, filters }: AnalyticsP
 
                         {/* 2. Field Efficiency Bar Chart */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4">Productividad por Sector (kg/ha)</h3>
+                            <h3 className="text-lg font-bold text-gray-800 mb-4">Productividad por Campo (kg/ha)</h3>
                             <div className="h-80">
                                 <Bar
                                     data={efficiencyData}

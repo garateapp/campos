@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Field;
+use App\Models\CostCenter;
 use App\Models\Planting;
 use App\Models\Task;
 use App\Models\TaskType;
@@ -20,7 +21,24 @@ class TaskController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = Task::with(['field', 'creator', 'assignedUsers', 'taskType']);
+        $query = Task::with(['field', 'creator', 'assignedUsers', 'taskType', 'costCenter', 'planting']);
+
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if (!$user->isSuperAdmin()) {
+            $query->whereHas('assignments', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
+
+        if ($fieldIds !== null) {
+            $query->where(function ($q) use ($fieldIds) {
+                $q->whereIn('field_id', $fieldIds)
+                    ->orWhereHas('planting', function ($planting) use ($fieldIds) {
+                        $planting->whereIn('field_id', $fieldIds);
+                    });
+            });
+        }
 
         // Filter by status
         if ($request->has('status') && $request->status !== 'all') {
@@ -55,6 +73,7 @@ class TaskController extends Controller
             'due_date' => $task->due_date->format('Y-m-d'),
             'completed_date' => $task->completed_date?->format('Y-m-d'),
             'field_name' => $task->field?->name,
+            'cost_center_code' => $task->costCenter?->code,
             'creator_name' => $task->creator->name,
             'assigned_users' => $task->assignedUsers->pluck('name'),
             'is_overdue' => $task->isOverdue(),
@@ -72,14 +91,20 @@ class TaskController extends Controller
      */
     public function create(): Response
     {
-        $fields = Field::orderBy('name')->get(['id', 'name']);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        $fields = Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name']);
         $plantings = Planting::with('crop')
             ->whereNotIn('status', ['completed', 'failed'])
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('field_id', $fieldIds))
             ->get()
             ->map(fn ($p) => [
                 'id' => $p->id,
                 'label' => "{$p->crop->name} - {$p->field->name} - CC:{$p->cc} ({$p->season})",
                 'field_id' => $p->field_id,
+                'cost_center_id' => $p->cost_center_id,
             ]);
         $users = User::where('company_id', auth()->user()->company_id)
             ->where('is_active', true)
@@ -89,6 +114,7 @@ class TaskController extends Controller
         return Inertia::render('Tasks/Create', [
             'fields' => $fields,
             'plantings' => $plantings,
+            'costCenters' => CostCenter::orderBy('code')->get(['id', 'code', 'name']),
             'users' => $users,
             'taskTypes' => TaskType::orderBy('name')->get(['id', 'name']),
         ]);
@@ -99,10 +125,13 @@ class TaskController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'field_id' => 'nullable|exists:fields,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'planting_id' => 'nullable|exists:plantings,id',
             'task_type_id' => 'required|exists:task_types,id',
             'priority' => 'required|in:low,medium,high,urgent',
@@ -112,12 +141,22 @@ class TaskController extends Controller
             'metadata' => 'nullable|array',
         ]);
 
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
+
+        $costCenterId = $validated['cost_center_id'] ?? null;
+        if (!$costCenterId && !empty($validated['planting_id'])) {
+            $costCenterId = Planting::find($validated['planting_id'])?->cost_center_id;
+        }
+
         $task = Task::create([
             'company_id' => auth()->user()->company_id,
             'created_by' => auth()->id(),
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'field_id' => $validated['field_id'] ?? null,
+            'cost_center_id' => $costCenterId,
             'planting_id' => $validated['planting_id'] ?? null,
             'task_type_id' => $validated['task_type_id'],
             'priority' => $validated['priority'],
@@ -125,14 +164,16 @@ class TaskController extends Controller
             'metadata' => $validated['metadata'] ?? null,
         ]);
 
-        // Create assignments
-        if (!empty($validated['assigned_users'])) {
-            foreach ($validated['assigned_users'] as $userId) {
-                TaskAssignment::create([
-                    'task_id' => $task->id,
-                    'user_id' => $userId,
-                ]);
-            }
+        // Create assignments (default to creator if none)
+        $assignedUsers = $validated['assigned_users'] ?? [];
+        if (empty($assignedUsers)) {
+            $assignedUsers = [auth()->id()];
+        }
+        foreach ($assignedUsers as $userId) {
+            TaskAssignment::create([
+                'task_id' => $task->id,
+                'user_id' => $userId,
+            ]);
         }
 
         // Log task creation
@@ -151,6 +192,7 @@ class TaskController extends Controller
      */
     public function show(Task $task): Response
     {
+        $this->ensureTaskAccess($task);
         $task->load(['field', 'planting.crop', 'creator', 'assignments.user', 'logs.user', 'taskType']);
 
         return Inertia::render('Tasks/Show', [
@@ -164,6 +206,7 @@ class TaskController extends Controller
                 'due_date' => $task->due_date->format('Y-m-d'),
                 'completed_date' => $task->completed_date?->format('Y-m-d'),
                 'field' => $task->field,
+                'cost_center' => $task->costCenter,
                 'planting' => $task->planting ? [
                     'id' => $task->planting->id,
                     'crop_name' => $task->planting->crop->name,
@@ -196,16 +239,23 @@ class TaskController extends Controller
      */
     public function edit(Task $task): Response
     {
+        $this->ensureTaskAccess($task);
         $task->load('assignments');
 
-        $fields = Field::orderBy('name')->get(['id', 'name']);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        $fields = Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name']);
         $plantings = Planting::with('crop', 'field')
             ->whereNotIn('status', ['completed', 'failed'])
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('field_id', $fieldIds))
             ->get()
             ->map(fn ($p) => [
                 'id' => $p->id,
                 'label' => "{$p->crop->name} - {$p->field->name} ({$p->season})",
                 'field_id' => $p->field_id,
+                'cost_center_id' => $p->cost_center_id,
             ]);
         $users = User::where('company_id', auth()->user()->company_id)
             ->where('is_active', true)
@@ -220,6 +270,7 @@ class TaskController extends Controller
             ],
             'fields' => $fields,
             'plantings' => $plantings,
+            'costCenters' => CostCenter::orderBy('code')->get(['id', 'code', 'name']),
             'users' => $users,
             'taskTypes' => TaskType::orderBy('name')->get(['id', 'name']),
         ]);
@@ -230,10 +281,14 @@ class TaskController extends Controller
      */
     public function update(Request $request, Task $task)
     {
+        $this->ensureTaskAccess($task);
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'field_id' => 'nullable|exists:fields,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'planting_id' => 'nullable|exists:plantings,id',
             'task_type_id' => 'required|exists:task_types,id',
             'priority' => 'required|in:low,medium,high,urgent',
@@ -242,10 +297,20 @@ class TaskController extends Controller
             'assigned_users.*' => 'exists:users,id',
         ]);
 
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $validated['field_id'] = $fieldIds[0];
+        }
+
+        $costCenterId = $validated['cost_center_id'] ?? null;
+        if (!$costCenterId && !empty($validated['planting_id'])) {
+            $costCenterId = Planting::find($validated['planting_id'])?->cost_center_id;
+        }
+
         $task->update([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'field_id' => $validated['field_id'] ?? null,
+            'cost_center_id' => $costCenterId,
             'planting_id' => $validated['planting_id'] ?? null,
             'task_type_id' => $validated['task_type_id'],
             'priority' => $validated['priority'],
@@ -277,6 +342,7 @@ class TaskController extends Controller
      */
     public function updateStatus(Request $request, Task $task)
     {
+        $this->ensureTaskAccess($task);
         $validated = $request->validate([
             'status' => 'required|in:pending,in_progress,completed,cancelled',
         ]);
@@ -304,6 +370,7 @@ class TaskController extends Controller
      */
     public function assign(Request $request, Task $task)
     {
+        $this->ensureTaskAccess($task);
         $validated = $request->validate([
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
@@ -324,6 +391,7 @@ class TaskController extends Controller
      */
     public function storeLog(Request $request, Task $task)
     {
+        $this->ensureTaskAccess($task);
         $validated = $request->validate([
             'action' => 'required|string|max:50',
             'note' => 'nullable|string|max:2000',
@@ -357,9 +425,30 @@ class TaskController extends Controller
      */
     public function destroy(Task $task)
     {
+        $this->ensureTaskAccess($task);
         $task->delete();
 
         return redirect()->route('tasks.index')->with('success', 'Tarea eliminada.');
+    }
+
+    private function ensureTaskAccess(Task $task): void
+    {
+        $user = auth()->user();
+        if ($user->isSuperAdmin()) {
+            return;
+        }
+
+        $isAssigned = $task->assignments()->where('user_id', $user->id)->exists();
+        $matchesField = true;
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null) {
+            $matchesField = in_array($task->field_id, $fieldIds, true)
+                || in_array($task->planting?->field_id, $fieldIds, true);
+        }
+
+        if (!$isAssigned || !$matchesField) {
+            abort(403, 'No tienes acceso a esta tarea.');
+        }
     }
 
     /**

@@ -52,7 +52,7 @@ class SoilTypeController extends Controller
     public function destroy(SoilType $soilType)
     {
         if ($soilType->fields()->count() > 0) {
-            return back()->with('error', 'No se puede eliminar el tipo de suelo porque tiene parcelas asociadas.');
+            return back()->with('error', 'No se puede eliminar el tipo de suelo porque tiene campos asociados.');
         }
 
         $soilType->delete();

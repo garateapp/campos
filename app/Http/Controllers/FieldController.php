@@ -15,9 +15,14 @@ class FieldController extends Controller
      */
     public function index(): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $fields = Field::with(['soilType', 'plantings' => function ($query) {
             $query->whereNotIn('status', ['completed', 'failed']);
         }])
+            ->when($fieldIds !== null, function ($query) use ($fieldIds) {
+                $query->whereIn('id', $fieldIds);
+            })
             ->orderBy('name')
             ->get()
             ->map(fn ($field) => [
@@ -63,7 +68,7 @@ class FieldController extends Controller
 
         Field::create($validated);
 
-        return redirect()->route('fields.index')->with('success', 'Parcela creada exitosamente.');
+        return redirect()->route('fields.index')->with('success', 'Campo creado exitosamente.');
     }
 
     /**
@@ -71,11 +76,24 @@ class FieldController extends Controller
      */
     public function show(Field $field): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($field->id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este campo.');
+        }
+
         $field->load([
             'plantings.crop',
             'plantings.activities',
             'plantings.harvests',
-            'tasks' => fn ($q) => $q->latest()->limit(10),
+            'tasks' => function ($q) use ($user) {
+                if (!$user->isSuperAdmin()) {
+                    $q->whereHas('assignments', function ($assignments) use ($user) {
+                        $assignments->where('user_id', $user->id);
+                    });
+                }
+                $q->latest()->limit(10);
+            },
         ]);
 
         return Inertia::render('Fields/Show', [
@@ -113,6 +131,12 @@ class FieldController extends Controller
      */
     public function edit(Field $field): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($field->id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este campo.');
+        }
+
         return Inertia::render('Fields/Edit', [
             'field' => $field,
             'soilTypes' => SoilType::orderBy('name')->get(['id', 'name']),
@@ -124,6 +148,12 @@ class FieldController extends Controller
      */
     public function update(Request $request, Field $field)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($field->id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este campo.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
@@ -136,7 +166,7 @@ class FieldController extends Controller
 
         $field->update($validated);
 
-        return redirect()->route('fields.index')->with('success', 'Parcela actualizada.');
+        return redirect()->route('fields.index')->with('success', 'Campo actualizado.');
     }
 
     /**
@@ -144,9 +174,15 @@ class FieldController extends Controller
      */
     public function destroy(Field $field)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($field->id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este campo.');
+        }
+
         $field->delete();
 
-        return redirect()->route('fields.index')->with('success', 'Parcela eliminada.');
+        return redirect()->route('fields.index')->with('success', 'Campo eliminado.');
     }
 
     /**
@@ -154,7 +190,12 @@ class FieldController extends Controller
      */
     public function mapping(): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $fields = Field::with(['plantings.crop'])
+            ->when($fieldIds !== null, function ($query) use ($fieldIds) {
+                $query->whereIn('id', $fieldIds);
+            })
             ->orderBy('name')
             ->get()
             ->map(fn ($field) => [

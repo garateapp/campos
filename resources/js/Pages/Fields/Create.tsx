@@ -36,12 +36,12 @@ export default function Create({ soilTypes }: CreateProps) {
                         ← Volver
                     </Link>
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Nueva Parcela
+                        Nuevo Campo
                     </h2>
                 </div>
             }
         >
-            <Head title="Nueva Parcela" />
+            <Head title="Nuevo Campo" />
 
             <div className="py-6">
                 <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
@@ -49,7 +49,7 @@ export default function Create({ soilTypes }: CreateProps) {
                         <form onSubmit={submit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <InputLabel htmlFor="name" value="Nombre de la Parcela *" />
+                                    <InputLabel htmlFor="name" value="Nombre del Campo *" />
                                     <TextInput
                                         id="name"
                                         type="text"
@@ -140,7 +140,7 @@ export default function Create({ soilTypes }: CreateProps) {
                                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
                                     rows={3}
                                     onChange={(e) => setData('notes', e.target.value)}
-                                    placeholder="Información adicional sobre la parcela..."
+                                    placeholder="Información adicional sobre la campo..."
                                 />
                                 <InputError message={errors.notes} className="mt-2" />
                             </div>
@@ -153,7 +153,7 @@ export default function Create({ soilTypes }: CreateProps) {
                                     Cancelar
                                 </Link>
                                 <PrimaryButton disabled={processing}>
-                                    {processing ? 'Guardando...' : 'Crear Parcela'}
+                                    {processing ? 'Guardando...' : 'Crear Campo'}
                                 </PrimaryButton>
                             </div>
                         </form>

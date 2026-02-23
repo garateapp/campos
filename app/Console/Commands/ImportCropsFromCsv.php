@@ -16,7 +16,7 @@ class ImportCropsFromCsv extends Command
 {
     protected $signature = 'crops:import {file : Ruta al CSV} {--company= : ID de la compañia (por defecto, compañía del usuario no aplica en CLI)}';
 
-    protected $description = 'Importa cultivos en masa usando nombres de especie, campo y variedades (separadas por |).';
+    protected $description = 'Importa cuarteles en masa usando nombres de especie, campo y variedades (separadas por |).';
 
     public function handle(): int
     {
@@ -57,7 +57,7 @@ class ImportCropsFromCsv extends Command
 
             if ($errors) {
                 DB::rollBack();
-                $this->error('Se encontraron errores; no se creó ningún cultivo:');
+                $this->error('Se encontraron errores; no se creó ningún cuartel:');
                 foreach ($errors as $error) {
                     $this->line(" - {$error}");
                 }
@@ -71,7 +71,7 @@ class ImportCropsFromCsv extends Command
             return self::FAILURE;
         }
 
-        $this->info("Importación exitosa. Cultivos creados: {$created}");
+        $this->info("Importación exitosa. Cuarteles creados: {$created}");
         return self::SUCCESS;
     }
 

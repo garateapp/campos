@@ -49,8 +49,8 @@ export default function Authenticated({
                                         </button>
                                     </Dropdown.Trigger>
                                     <Dropdown.Content>
-                                        <Dropdown.Link href={route('fields.index')}>Parcelas</Dropdown.Link>
-                                        <Dropdown.Link href={route('crops.index')}>Cultivos</Dropdown.Link>
+                                        <Dropdown.Link href={route('fields.index')}>Campos</Dropdown.Link>
+                                        <Dropdown.Link href={route('crops.index')}>Cuarteles</Dropdown.Link>
                                         <Dropdown.Link href={route('field-mapping')}>Mapa</Dropdown.Link>
                                         <Dropdown.Link href={route('tasks.index')}>Tareas</Dropdown.Link>
                                         <Dropdown.Link href={route('plantings.index')}>Labores</Dropdown.Link>
@@ -70,8 +70,8 @@ export default function Authenticated({
                                     <Dropdown.Content>
                                         <Dropdown.Link href={route('inputs.index')}>Inventario Insumos</Dropdown.Link>
                                         <Dropdown.Link href={route('costs.index')}>Costos Directos</Dropdown.Link>
-                                        <Dropdown.Link href={route('labor-plannings.index')}>Planificacion Laboral</Dropdown.Link>
-                                        <Dropdown.Link href={route('profitability.index')}>Rentabilidad por Sector</Dropdown.Link>
+                                        <Dropdown.Link href={route('labor-plannings.index')}>Planificación Laboral</Dropdown.Link>
+                                        <Dropdown.Link href={route('profitability.index')}>Rentabilidad por Campo</Dropdown.Link>
                                     </Dropdown.Content>
                                 </Dropdown>
 
@@ -87,6 +87,8 @@ export default function Authenticated({
                                     </Dropdown.Trigger>
                                     <Dropdown.Content>
                                         <Dropdown.Link href={route('reports.index')}>Reportes y Exportacion</Dropdown.Link>
+                                        <Dropdown.Link href={route('reports.attendance-daily')}>Asistencia Diaria</Dropdown.Link>
+                                        <Dropdown.Link href={route('reports.attendance-monthly')}>Asistencia Mensual</Dropdown.Link>
                                         <Dropdown.Link href={route('analytics.index')}>Analitica BI</Dropdown.Link>
                                     </Dropdown.Content>
                                 </Dropdown>
@@ -137,6 +139,9 @@ export default function Authenticated({
                                             </Dropdown.Link>
                                             <Dropdown.Link href={route('unit-of-measures.index')}>
                                                 Maestro de Unidades de Medida
+                                            </Dropdown.Link>
+                                            <Dropdown.Link href={route('cost-centers.index')}>
+                                                Maestro de Centros de Costo
                                             </Dropdown.Link>
                                             <Dropdown.Link href={route('input-categories.index')}>
                                                 Maestro de Categorias (Insumos)
@@ -287,8 +292,8 @@ export default function Authenticated({
 
                         <div className="pt-4 pb-1 border-t border-gray-100">
                             <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Operacion</div>
-                            <ResponsiveNavLink href={route('fields.index')} active={route().current('fields.*')}>Parcelas</ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('crops.index')} active={route().current('crops.*')}>Cultivos</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('fields.index')} active={route().current('fields.*')}>Campos</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('crops.index')} active={route().current('crops.*')}>Cuarteles</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('field-mapping')} active={route().current('field-mapping')}>Mapa</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('tasks.index')} active={route().current('tasks.*')}>Tareas</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('plantings.index')} active={route().current('plantings.*')}>Labores</ResponsiveNavLink>
@@ -298,13 +303,15 @@ export default function Authenticated({
                             <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Gestion Financiera</div>
                             <ResponsiveNavLink href={route('inputs.index')} active={route().current('inputs.*')}>Inventario</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('costs.index')} active={route().current('costs.*')}>Costos</ResponsiveNavLink>
-                            <ResponsiveNavLink href={route('labor-plannings.index')} active={route().current('labor-plannings.*')}>Planificacion</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('labor-plannings.index')} active={route().current('labor-plannings.*')}>Planificación</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('profitability.index')} active={route().current('profitability.*')}>Rentabilidad</ResponsiveNavLink>
                         </div>
 
                         <div className="pt-4 pb-1 border-t border-gray-100">
                             <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Inteligencia</div>
                             <ResponsiveNavLink href={route('reports.index')} active={route().current('reports.*')}>Reportes</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('reports.attendance-daily')} active={route().current('reports.attendance-daily')}>Asistencia Diaria</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('reports.attendance-monthly')} active={route().current('reports.attendance-monthly')}>Asistencia Mensual</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('analytics.index')} active={route().current('analytics.*')}>Analitica BI</ResponsiveNavLink>
                         </div>
 
@@ -317,6 +324,7 @@ export default function Authenticated({
                             <ResponsiveNavLink href={route('task-types.index')} active={route().current('task-types.*')}>Maestro de Tipos de Tarea</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('labor-types.index')} active={route().current('labor-types.*')}>Maestro de Tipos de Labor</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('unit-of-measures.index')} active={route().current('unit-of-measures.*')}>Maestro de Unidades de Medida</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('cost-centers.index')} active={route().current('cost-centers.*')}>Maestro de Centros de Costo</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('input-categories.index')} active={route().current('input-categories.*')}>Maestro de Categorias (Insumos)</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('contractors.index')} active={route().current('contractors.*')}>Maestro de Contratistas</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('workers.index')} active={route().current('workers.*')}>Maestro de Jornaleros</ResponsiveNavLink>

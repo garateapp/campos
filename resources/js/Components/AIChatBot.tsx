@@ -79,7 +79,7 @@ const AIChatBot: React.FC = () => {
                                     <span className="material-symbols-outlined text-3xl">spark</span>
                                 </div>
                                 <h4 className="text-gray-900 dark:text-white font-bold text-sm">¿En qué puedo ayudarte hoy?</h4>
-                                <p className="text-xs text-gray-500 mt-2">Pregúntame sobre rotación de cultivos, diagnóstico de plagas o eficiencia laboral.</p>
+                                <p className="text-xs text-gray-500 mt-2">Pregúntame sobre rotación de cuarteles, diagnóstico de plagas o eficiencia laboral.</p>
 
                                 <div className="mt-6 flex flex-wrap gap-2 justify-center">
                                     <SuggestionButton onClick={() => setInput("¿Cómo puedo mejorar el rendimiento de mi suelo?")}>Mejorar suelo</SuggestionButton>

@@ -16,6 +16,7 @@ class Planting extends Model
     protected $fillable = [
         'company_id',
         'field_id',
+        'cost_center_id',
         'crop_id',
         'season',
         'planted_date',
@@ -34,6 +35,7 @@ class Planting extends Model
         'planted_area_hectares' => 'decimal:2',
         'plants_count' => 'integer',
         'expected_yield_kg' => 'decimal:2',
+        'cost_center_id' => 'integer',
     ];
 
     /**
@@ -42,6 +44,11 @@ class Planting extends Model
     public function field(): BelongsTo
     {
         return $this->belongsTo(Field::class);
+    }
+
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class);
     }
 
     /**

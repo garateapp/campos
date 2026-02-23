@@ -2,41 +2,46 @@ import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 
-interface HarvestCollectionRow {
-    collection_date: string;
-    field_id: number;
-    field_name: string;
+interface AttendanceMonthlyRow {
+    worker_id: number;
     worker_name: string;
-    container_id: number;
-    container_name: string;
-    total_quantity: number;
-    total_bins: number;
+    contractor_id: number | null;
+    contractor_name: string;
+    field_id: number | null;
+    field_name: string;
+    attendances_count: number;
+    first_attendance_date: string | null;
+    last_attendance_date: string | null;
 }
 
 interface Props {
-    rows: HarvestCollectionRow[];
+    rows: AttendanceMonthlyRow[];
     fields: { id: number; name: string }[];
+    contractors: { id: number; business_name: string }[];
     filters: {
-        date: string;
+        month: string;
         field_id: number | string | null;
+        contractor_id: number | string | null;
     };
 }
 
-export default function HarvestCollectionsDaily({ rows, fields, filters }: Props) {
+export default function AttendanceMonthly({ rows, fields, contractors, filters }: Props) {
     const [form, setForm] = useState({
-        date: filters.date,
+        month: filters.month,
         field_id: filters.field_id ?? '',
+        contractor_id: filters.contractor_id ?? '',
     });
 
-    const totalQuantity = rows.reduce((sum, row) => sum + Number(row.total_quantity || 0), 0);
-    const totalBins = rows.reduce((sum, row) => sum + Number(row.total_bins || 0), 0);
+    const totalAttendances = rows.reduce((sum, row) => sum + Number(row.attendances_count || 0), 0);
+    const totalWorkers = rows.length;
 
     const applyFilters = () => {
         router.get(
-            route('reports.harvest-collections'),
+            route('reports.attendance-monthly'),
             {
-                date: form.date,
+                month: form.month,
                 field_id: form.field_id || undefined,
+                contractor_id: form.contractor_id || undefined,
             },
             { preserveScroll: true, preserveState: true }
         );
@@ -52,34 +57,34 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                         </Link>
                         <div>
                             <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                                Cosecha Recolectada por Dia
+                                Asistencia Mensual Acumulada
                             </h2>
                             <p className="text-sm text-gray-500">
-                                Totales diarios por campo y envase.
+                                Totales del mes por trabajador.
                             </p>
                         </div>
                     </div>
                 </div>
             }
         >
-            <Head title="Cosecha Recolectada por Dia" />
+            <Head title="Asistencia Mensual Acumulada" />
 
             <div className="py-6">
-                <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100 p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Fecha</label>
+                                <label className="block text-sm font-medium text-gray-700">Mes</label>
                                 <input
-                                    type="date"
-                                    value={form.date}
-                                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                                    type="month"
+                                    value={form.month}
+                                    onChange={(e) => setForm({ ...form, month: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Campo</label>
+                                <label className="block text-sm font-medium text-gray-700">Predio</label>
                                 <select
                                     value={form.field_id}
                                     onChange={(e) => setForm({ ...form, field_id: e.target.value })}
@@ -89,6 +94,22 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                                     {fields.map((field) => (
                                         <option key={field.id} value={field.id}>
                                             {field.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Contratista</label>
+                                <select
+                                    value={form.contractor_id}
+                                    onChange={(e) => setForm({ ...form, contractor_id: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                >
+                                    <option value="">Todos</option>
+                                    {contractors.map((contractor) => (
+                                        <option key={contractor.id} value={contractor.id}>
+                                            {contractor.business_name}
                                         </option>
                                     ))}
                                 </select>
@@ -108,54 +129,58 @@ export default function HarvestCollectionsDaily({ rows, fields, filters }: Props
                             <div className="flex flex-wrap gap-6 text-sm text-gray-600">
                                 <div>
                                     <span className="font-semibold text-gray-900">
-                                        {totalQuantity.toLocaleString('es-CL', { maximumFractionDigits: 2 })}
+                                        {totalAttendances.toLocaleString('es-CL')}
                                     </span>{' '}
-                                    total recolectado
+                                    asistencias acumuladas
                                 </div>
                                 <div>
                                     <span className="font-semibold text-gray-900">
-                                        {totalBins.toLocaleString('es-CL', { maximumFractionDigits: 2 })}
+                                        {totalWorkers.toLocaleString('es-CL')}
                                     </span>{' '}
-                                    bins totales
+                                    trabajadores
                                 </div>
                             </div>
                         </div>
 
-                        <div className="mt-6">
+                        <div className="mt-6 overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campo</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Envase</th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Bins</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predio</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contratista</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trabajador</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Asistencias Mes</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Primera Fecha</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ultima Fecha</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {rows.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
-                                                No hay registros para el dia seleccionado.
+                                            <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
+                                                No hay asistencias para el mes seleccionado.
                                             </td>
                                         </tr>
                                     ) : (
-                                        rows.map((row, index) => (
-                                            <tr key={`${row.collection_date}-${row.field_id}-${row.container_id}-${index}`} className="hover:bg-gray-50 transition-colors">
+                                        rows.map((row) => (
+                                            <tr key={`${row.worker_id}-${row.field_id ?? 'sin-predio'}`} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                                     {row.field_name}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {row.contractor_name}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                                     {row.worker_name}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {row.container_name}
-                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-700 font-semibold">
-                                                    {Number(row.total_quantity).toLocaleString('es-CL', { maximumFractionDigits: 2 })}
+                                                    {Number(row.attendances_count).toLocaleString('es-CL')}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">
-                                                    {Number(row.total_bins).toLocaleString('es-CL', { maximumFractionDigits: 2 })}
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                    {row.first_attendance_date ?? '-'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                    {row.last_attendance_date ?? '-'}
                                                 </td>
                                             </tr>
                                         ))

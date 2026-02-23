@@ -17,6 +17,7 @@ class Crop extends Model
     protected $fillable = [
         'company_id',
         'field_id',
+        'cost_center_id',
         'species_id',
         'variety_id',
         'name',
@@ -40,6 +41,7 @@ class Crop extends Model
         'species_id' => 'integer',
         'variety_id' => 'integer',
         'field_id' => 'integer',
+        'cost_center_id' => 'integer',
     ];
 
     /**
@@ -48,6 +50,11 @@ class Crop extends Model
     public function field(): BelongsTo
     {
         return $this->belongsTo(Field::class);
+    }
+
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class);
     }
 
     /**

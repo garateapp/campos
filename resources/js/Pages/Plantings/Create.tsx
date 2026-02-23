@@ -18,12 +18,21 @@ interface Crop {
     variety: string | null;
 }
 
+interface CostCenter {
+    id: number;
+    code: string;
+    name: string;
+    hectares: number | null;
+    plants_count: number | null;
+}
+
 interface PlantingsCreateProps {
     fields: Field[];
     crops: Crop[];
+    costCenters: CostCenter[];
 }
 
-export default function Create({ fields, crops }: PlantingsCreateProps) {
+export default function Create({ fields, crops, costCenters }: PlantingsCreateProps) {
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const defaultSeason = currentMonth >= 7
@@ -32,6 +41,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
 
     const { data, setData, post, processing, errors } = useForm({
         field_id: '',
+        cost_center_id: '',
         crop_id: '',
         season: defaultSeason,
         planted_date: new Date().toISOString().split('T')[0],
@@ -51,6 +61,23 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
         }
     };
 
+    const handleCostCenterChange = (costCenterId: string) => {
+        setData('cost_center_id', costCenterId);
+        if (!costCenterId) {
+            return;
+        }
+        const selected = costCenters.find((cc) => cc.id.toString() === costCenterId);
+        if (selected) {
+            setData('cc', selected.code);
+            if (selected.hectares && !data.planted_area_hectares) {
+                setData('planted_area_hectares', selected.hectares.toString());
+            }
+            if (selected.plants_count && !data.plants_count) {
+                setData('plants_count', selected.plants_count.toString());
+            }
+        }
+    };
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('plantings.store'));
@@ -64,12 +91,12 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                         ← Volver
                     </Link>
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Registrar Nueva Siembra
+                        Registrar Nueva Labor
                     </h2>
                 </div>
             }
         >
-            <Head title="Nueva Siembra" />
+            <Head title="Nueva Labor" />
 
             <div className="py-6">
                 <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
@@ -77,7 +104,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                         <form onSubmit={submit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <InputLabel htmlFor="field_id" value="Parcela *" />
+                                    <InputLabel htmlFor="field_id" value="Campo *" />
                                     <select
                                         id="field_id"
                                         name="field_id"
@@ -86,7 +113,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                         onChange={(e) => handleFieldChange(e.target.value)}
                                         required
                                     >
-                                        <option value="">Seleccionar Parcela...</option>
+                                        <option value="">Seleccionar Campo...</option>
                                         {fields.map(f => (
                                             <option key={f.id} value={f.id}>{f.name} ({f.area_hectares} ha)</option>
                                         ))}
@@ -95,7 +122,26 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="crop_id" value="Cultivo (Especie/Variedad) *" />
+                                    <InputLabel htmlFor="cost_center_id" value="Centro de Costo (opcional)" />
+                                    <select
+                                        id="cost_center_id"
+                                        name="cost_center_id"
+                                        value={data.cost_center_id}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
+                                        onChange={(e) => handleCostCenterChange(e.target.value)}
+                                    >
+                                        <option value="">Seleccionar Centro de Costo...</option>
+                                        {costCenters.map((cc) => (
+                                            <option key={cc.id} value={cc.id}>
+                                                {cc.code} - {cc.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.cost_center_id} className="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="crop_id" value="Cuartel (Especie/Variedad) *" />
                                     <select
                                         id="crop_id"
                                         name="crop_id"
@@ -104,7 +150,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                         onChange={(e) => setData('crop_id', e.target.value)}
                                         required
                                     >
-                                        <option value="">Seleccionar Cultivo...</option>
+                                        <option value="">Seleccionar Cuartel...</option>
                                         {crops.map(c => (
                                             <option key={c.id} value={c.id}>
                                                 {c.name} {c.variety ? `- ${c.variety}` : ''}
@@ -112,7 +158,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                         ))}
                                     </select>
                                     <p className="mt-1 text-xs text-gray-500">
-                                        ¿No encuentras el cultivo? <Link href={route('crops.create')} className="text-green-600 hover:underline">Créalo aquí</Link>
+                                        ¿No encuentras el cuartel? <Link href={route('crops.create')} className="text-green-600 hover:underline">Créalo aquí</Link>
                                     </p>
                                     <InputError message={errors.crop_id} className="mt-2" />
                                 </div>
@@ -160,6 +206,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                         className="mt-1 block w-full"
                                         onChange={(e) => setData('cc', e.target.value)}
                                         placeholder="Ej: CC-001"
+                                        disabled={!!data.cost_center_id}
                                     />
                                     <InputError message={errors.cc} className="mt-2" />
                                 </div>
@@ -243,7 +290,7 @@ export default function Create({ fields, crops }: PlantingsCreateProps) {
                                     Cancelar
                                 </Link>
                                 <PrimaryButton disabled={processing}>
-                                    {processing ? 'Registrando...' : 'Registrar Siembra'}
+                                    {processing ? 'Registrando...' : 'Registrar Labor'}
                                 </PrimaryButton>
                             </div>
                         </form>

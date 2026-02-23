@@ -174,14 +174,14 @@ export default function Show({ input, lots, recentUsages, fields = [] }: InputSh
 
                                     {!input.field_id && (
                                         <div>
-                                            <label className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Parcela Destino</label>
+                                            <label className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Campo Destino</label>
                                             <select
                                                 value={data.field_id}
                                                 onChange={e => setData('field_id', e.target.value)}
                                                 className="mt-1 block w-full border-green-200 rounded-lg text-sm focus:ring-green-500 focus:border-green-500"
                                                 required
                                             >
-                                                <option value="">Seleccionar parcela...</option>
+                                                <option value="">Seleccionar campo...</option>
                                                 {fields.map(f => (
                                                     <option key={f.id} value={f.id}>{f.name}</option>
                                                 ))}

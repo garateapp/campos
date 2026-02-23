@@ -18,9 +18,18 @@ interface Crop {
     variety: string | null;
 }
 
+interface CostCenter {
+    id: number;
+    code: string;
+    name: string;
+    hectares: number | null;
+    plants_count: number | null;
+}
+
 interface Planting {
     id: number;
     field_id: number;
+    cost_center_id?: number | null;
     crop_id: number;
     season: string;
     planted_date: string;
@@ -36,11 +45,13 @@ interface PlantingsEditProps {
     planting: Planting;
     fields: Field[];
     crops: Crop[];
+    costCenters: CostCenter[];
 }
 
-export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
+export default function Edit({ planting, fields, crops, costCenters }: PlantingsEditProps) {
     const { data, setData, patch, processing, errors } = useForm({
         field_id: planting.field_id?.toString() || '',
+        cost_center_id: planting.cost_center_id?.toString() || '',
         crop_id: planting.crop_id?.toString() || '',
         season: planting.season || '',
         planted_date: planting.planted_date || '',
@@ -52,6 +63,23 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
         expected_yield_kg: planting.expected_yield_kg?.toString() || '',
         notes: planting.notes || '',
     });
+
+    const handleCostCenterChange = (costCenterId: string) => {
+        setData('cost_center_id', costCenterId);
+        if (!costCenterId) {
+            return;
+        }
+        const selected = costCenters.find((cc) => cc.id.toString() === costCenterId);
+        if (selected) {
+            setData('cc', selected.code);
+            if (selected.hectares && !data.planted_area_hectares) {
+                setData('planted_area_hectares', selected.hectares.toString());
+            }
+            if (selected.plants_count && !data.plants_count) {
+                setData('plants_count', selected.plants_count.toString());
+            }
+        }
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -66,12 +94,12 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
                         ← Volver
                     </Link>
                     <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Editar Siembra
+                        Editar Labor
                     </h2>
                 </div>
             }
         >
-            <Head title="Editar Siembra" />
+            <Head title="Editar Labor" />
 
             <div className="py-6">
                 <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
@@ -79,7 +107,7 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
                         <form onSubmit={submit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <InputLabel htmlFor="field_id" value="Parcela *" />
+                                    <InputLabel htmlFor="field_id" value="Campo *" />
                                     <select
                                         id="field_id"
                                         name="field_id"
@@ -88,7 +116,7 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
                                         onChange={(e) => setData('field_id', e.target.value)}
                                         required
                                     >
-                                        <option value="">Seleccionar Parcela...</option>
+                                        <option value="">Seleccionar Campo...</option>
                                         {fields.map(f => (
                                             <option key={f.id} value={f.id}>{f.name} ({f.area_hectares} ha)</option>
                                         ))}
@@ -97,7 +125,26 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="crop_id" value="Cultivo (Especie/Variedad) *" />
+                                    <InputLabel htmlFor="cost_center_id" value="Centro de Costo (opcional)" />
+                                    <select
+                                        id="cost_center_id"
+                                        name="cost_center_id"
+                                        value={data.cost_center_id}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
+                                        onChange={(e) => handleCostCenterChange(e.target.value)}
+                                    >
+                                        <option value="">Seleccionar Centro de Costo...</option>
+                                        {costCenters.map((cc) => (
+                                            <option key={cc.id} value={cc.id}>
+                                                {cc.code} - {cc.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={(errors as any).cost_center_id} className="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="crop_id" value="Cuartel (Especie/Variedad) *" />
                                     <select
                                         id="crop_id"
                                         name="crop_id"
@@ -106,7 +153,7 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
                                         onChange={(e) => setData('crop_id', e.target.value)}
                                         required
                                     >
-                                        <option value="">Seleccionar Cultivo...</option>
+                                        <option value="">Seleccionar Cuartel...</option>
                                         {crops.map(c => (
                                             <option key={c.id} value={c.id}>
                                                 {c.name} {c.variety ? `- ${c.variety}` : ''}
@@ -126,6 +173,7 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
                                         className="mt-1 block w-full"
                                         onChange={(e) => setData('cc', e.target.value)}
                                         placeholder="Ej: CC-001"
+                                        disabled={!!data.cost_center_id}
                                     />
                                     <InputError message={(errors as any).cc} className="mt-2" />
                                 </div>
@@ -263,7 +311,7 @@ export default function Edit({ planting, fields, crops }: PlantingsEditProps) {
                                     Cancelar
                                 </Link>
                                 <PrimaryButton disabled={processing}>
-                                    {processing ? 'Guardando...' : 'Actualizar Siembra'}
+                                    {processing ? 'Guardando...' : 'Actualizar Labor'}
                                 </PrimaryButton>
                             </div>
                         </form>

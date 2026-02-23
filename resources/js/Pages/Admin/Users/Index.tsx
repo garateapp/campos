@@ -3,28 +3,33 @@ import { Head, useForm } from '@inertiajs/react';
 
 type Role = { id: number; name: string; display_name?: string };
 type Company = { id: number; name: string };
+type Field = { id: number; name: string };
 type User = {
     id: number;
     name: string;
     email: string;
     phone?: string;
     company_id: number | null;
+    field_id: number | null;
     role_id: number | null;
+    fields?: Field[];
     is_active: boolean;
     company?: Company;
     role?: Role;
 };
 
-function UserRow({ user, roles, companies }: { user: User; roles: Role[]; companies: Company[] }) {
+function UserRow({ user, roles, companies, fields }: { user: User; roles: Role[]; companies: Company[]; fields: Field[] }) {
     const { data, setData, patch, processing, errors } = useForm({
         name: user.name,
         email: user.email,
         phone: user.phone || '',
         company_id: user.company_id?.toString() || '',
+        field_id: user.field_id?.toString() || '',
         role_id: user.role_id?.toString() || '',
         is_active: user.is_active,
         password: '',
         password_confirmation: '',
+        field_ids: (user.fields || []).map((f) => f.id.toString()),
     });
 
     const submit = (e: React.FormEvent) => {
@@ -33,7 +38,7 @@ function UserRow({ user, roles, companies }: { user: User; roles: Role[]; compan
     };
 
     return (
-        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center border-b border-gray-100 py-3">
+        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-8 gap-3 items-center border-b border-gray-100 py-3">
             <div>
                 <input value={data.name} onChange={e => setData('name', e.target.value)} className="w-full rounded-lg border-gray-300 shadow-sm text-sm" />
                 <input value={data.email} onChange={e => setData('email', e.target.value)} className="w-full mt-1 rounded-lg border-gray-300 shadow-sm text-sm" />
@@ -60,6 +65,25 @@ function UserRow({ user, roles, companies }: { user: User; roles: Role[]; compan
                 </select>
                 {errors.role_id && <p className="text-xs text-red-500">{errors.role_id}</p>}
             </div>
+            <div>
+                <select value={data.field_id} onChange={e => setData('field_id', e.target.value)} className="w-full rounded-lg border-gray-300 shadow-sm text-sm">
+                    <option value="">Sin campo</option>
+                    {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+                {errors.field_id && <p className="text-xs text-red-500">{errors.field_id}</p>}
+            </div>
+            <div>
+                <select
+                    multiple
+                    value={data.field_ids}
+                    onChange={(e) => setData('field_ids', Array.from(e.target.selectedOptions, option => option.value))}
+                    className="w-full rounded-lg border-gray-300 shadow-sm text-sm min-h-[90px]"
+                >
+                    {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+                <p className="text-[10px] text-gray-500 mt-1">Usar para Admin/Agrónomo (multi).</p>
+                {errors.field_ids && <p className="text-xs text-red-500">{errors.field_ids}</p>}
+            </div>
             <div className="flex items-center gap-2">
                 <input type="checkbox" checked={data.is_active} onChange={e => setData('is_active', e.target.checked)} className="rounded border-gray-300" />
                 <span className="text-sm text-gray-700">{data.is_active ? 'Activo' : 'Inactivo'}</span>
@@ -73,16 +97,18 @@ function UserRow({ user, roles, companies }: { user: User; roles: Role[]; compan
     );
 }
 
-export default function UsersIndex({ users, roles, companies }: { users: User[]; roles: Role[]; companies: Company[] }) {
+export default function UsersIndex({ users, roles, companies, fields }: { users: User[]; roles: Role[]; companies: Company[]; fields: Field[] }) {
     const { data, setData, post, processing, reset, errors } = useForm({
         name: '',
         email: '',
         phone: '',
         company_id: '',
+        field_id: '',
         role_id: '',
         password: '',
         password_confirmation: '',
         is_active: true,
+        field_ids: [] as string[],
     });
 
     const submit = (e: React.FormEvent) => {
@@ -101,7 +127,7 @@ export default function UsersIndex({ users, roles, companies }: { users: User[];
                 <div className="mx-auto max-w-7xl space-y-6">
                     <div className="bg-white shadow-sm rounded-xl p-6 border border-gray-100">
                         <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase">Crear usuario</h3>
-                        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label className="text-sm text-gray-700">Nombre *</label>
                                 <input value={data.name} onChange={e => setData('name', e.target.value)} className="mt-1 w-full rounded-lg border-gray-300 shadow-sm" required />
@@ -141,6 +167,26 @@ export default function UsersIndex({ users, roles, companies }: { users: User[];
                                 </select>
                                 {errors.role_id && <p className="text-xs text-red-500">{errors.role_id}</p>}
                             </div>
+                            <div>
+                                <label className="text-sm text-gray-700">Campo</label>
+                                <select value={data.field_id} onChange={e => setData('field_id', e.target.value)} className="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
+                                    <option value="">Sin campo</option>
+                                    {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                </select>
+                                {errors.field_id && <p className="text-xs text-red-500">{errors.field_id}</p>}
+                            </div>
+                            <div>
+                                <label className="text-sm text-gray-700">Campos (Admin/Agrónomo)</label>
+                                <select
+                                    multiple
+                                    value={data.field_ids}
+                                    onChange={(e) => setData('field_ids', Array.from(e.target.selectedOptions, option => option.value))}
+                                    className="mt-1 w-full rounded-lg border-gray-300 shadow-sm min-h-[100px]"
+                                >
+                                    {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                </select>
+                                {errors.field_ids && <p className="text-xs text-red-500">{errors.field_ids}</p>}
+                            </div>
                             <div className="flex items-center gap-2">
                                 <input type="checkbox" checked={data.is_active} onChange={e => setData('is_active', e.target.checked)} className="rounded border-gray-300" />
                                 <label className="text-sm text-gray-700">Activo</label>
@@ -159,7 +205,7 @@ export default function UsersIndex({ users, roles, companies }: { users: User[];
                         </div>
                         <div className="divide-y divide-gray-100">
                             {users.map(user => (
-                                <UserRow key={user.id} user={user} roles={roles} companies={companies} />
+                                <UserRow key={user.id} user={user} roles={roles} companies={companies} fields={fields} />
                             ))}
                         </div>
                     </div>

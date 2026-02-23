@@ -18,8 +18,10 @@ class ProfitabilityController extends Controller
     public function index(Request $request)
     {
         $year = $request->input('year', date('Y'));
-        
-        $data = $this->profitabilityService->getFieldProfitability((int)$year);
+        $user = $request->user();
+        $fieldIds = $user->fieldScopeIds();
+
+        $data = $this->profitabilityService->getFieldProfitability((int)$year, $fieldIds);
 
         return Inertia::render('Profitability/Index', [
             'profitability' => $data,

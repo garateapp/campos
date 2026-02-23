@@ -20,6 +20,7 @@ class LaborPlanning extends Model
         'year',
         'month',
         'field_id',
+        'cost_center_id',
         'planting_id',
         'species_id',
         'planting_year',
@@ -32,11 +33,17 @@ class LaborPlanning extends Model
         'labor_type_id',
         'unit_of_measure_id',
         'num_jh_planned',
+        'num_jh_estimated_2',
         'avg_yield_planned',
+        'avg_yield_estimated_2',
         'total_jh_planned',
+        'total_jh_estimated_2',
         'effective_days_planned',
+        'effective_days_estimated_2',
         'value_planned',
+        'value_estimated_2',
         'total_value_planned',
+        'total_value_estimated_2',
         'avg_yield_actual',
         'total_jh_actual',
         'jh_ha_actual',
@@ -49,15 +56,21 @@ class LaborPlanning extends Model
         'kilos' => 'decimal:2',
         'meters' => 'decimal:2',
         'num_jh_planned' => 'decimal:2',
+        'num_jh_estimated_2' => 'decimal:2',
         'avg_yield_planned' => 'decimal:2',
+        'avg_yield_estimated_2' => 'decimal:2',
         'total_jh_planned' => 'decimal:2',
+        'total_jh_estimated_2' => 'decimal:2',
         'value_planned' => 'decimal:2',
+        'value_estimated_2' => 'decimal:2',
         'total_value_planned' => 'decimal:2',
+        'total_value_estimated_2' => 'decimal:2',
         'avg_yield_actual' => 'decimal:2',
         'total_jh_actual' => 'decimal:2',
         'jh_ha_actual' => 'decimal:2',
         'value_actual' => 'decimal:2',
         'total_value_actual' => 'decimal:2',
+        'cost_center_id' => 'integer',
     ];
 
     /**
@@ -66,6 +79,11 @@ class LaborPlanning extends Model
     public function field(): BelongsTo
     {
         return $this->belongsTo(Field::class);
+    }
+
+    public function costCenter(): BelongsTo
+    {
+        return $this->belongsTo(CostCenter::class);
     }
 
     /**

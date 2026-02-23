@@ -7,6 +7,7 @@ interface LaborPlanning {
     year: number;
     month: number;
     field_id: number | null;
+    cost_center_id?: number | null;
     planting_id?: number | null;
     species_id: number | null;
     variety_id: number | null;
@@ -18,14 +19,20 @@ interface LaborPlanning {
     kilos: number | null;
     meters: number | null;
     num_jh_planned: number | null;
+    num_jh_estimated_2: number | null;
     avg_yield_planned: number | null;
+    avg_yield_estimated_2: number | null;
     total_jh_planned: number | null;
+    total_jh_estimated_2: number | null;
     effective_days_planned: number | null;
+    effective_days_estimated_2: number | null;
     task_type_id: number | null;
     labor_type_id: number | null;
     unit_of_measure_id: number | null;
     value_planned: number | null;
+    value_estimated_2: number | null;
     total_value_planned: number | null;
+    total_value_estimated_2: number | null;
     avg_yield_actual: number | null;
     total_jh_actual: number | null;
     jh_ha_actual: number | null;
@@ -36,6 +43,7 @@ interface LaborPlanning {
 interface Props {
     planning: LaborPlanning;
     fields: { id: number; name: string }[];
+    costCenters: { id: number; code: string; name: string; hectares?: number | null; plants_count?: number | null }[];
     plantings: {
         id: number;
         label: string;
@@ -43,6 +51,7 @@ interface Props {
         species_id?: number | null;
         variety_id?: number | null;
         cc?: string | null;
+        cost_center_id?: number | null;
         hectares?: number | null;
         num_plants?: number | null;
         season?: string | null;
@@ -52,11 +61,12 @@ interface Props {
     units: { id: number; name: string; code?: string }[];
 }
 
-export default function Edit({ planning, fields, plantings, taskTypes, laborTypes, units }: Props) {
+export default function Edit({ planning, fields, costCenters, plantings, taskTypes, laborTypes, units }: Props) {
     const { data, setData, patch, processing, errors } = useForm({
         year: planning.year,
         month: planning.month,
         field_id: planning.field_id || '',
+        cost_center_id: planning.cost_center_id || '',
         planting_id: planning.planting_id || '',
         species_id: planning.species_id || '',
         variety_ids:
@@ -71,11 +81,17 @@ export default function Edit({ planning, fields, plantings, taskTypes, laborType
         labor_type_id: planning.labor_type_id || '',
         unit_of_measure_id: planning.unit_of_measure_id || '',
         num_jh_planned: planning.num_jh_planned || '',
+        num_jh_estimated_2: planning.num_jh_estimated_2 || '',
         avg_yield_planned: planning.avg_yield_planned || '',
+        avg_yield_estimated_2: planning.avg_yield_estimated_2 || '',
         total_jh_planned: planning.total_jh_planned || '',
+        total_jh_estimated_2: planning.total_jh_estimated_2 || '',
         effective_days_planned: planning.effective_days_planned || '',
+        effective_days_estimated_2: planning.effective_days_estimated_2 || '',
         value_planned: planning.value_planned || '',
+        value_estimated_2: planning.value_estimated_2 || '',
         total_value_planned: planning.total_value_planned || '',
+        total_value_estimated_2: planning.total_value_estimated_2 || '',
         avg_yield_actual: planning.avg_yield_actual || '',
         total_jh_actual: planning.total_jh_actual || '',
         jh_ha_actual: planning.jh_ha_actual || '',
@@ -89,12 +105,23 @@ export default function Edit({ planning, fields, plantings, taskTypes, laborType
         const selected = plantings.find((p) => p.id.toString() === plantingId);
         if (selected) {
             if (selected.field_id) setData('field_id', selected.field_id.toString());
+            if (selected.cost_center_id) setData('cost_center_id', selected.cost_center_id.toString());
             if (selected.species_id) setData('species_id', selected.species_id.toString());
             if (selected.variety_id) setData('variety_ids', [selected.variety_id.toString()]);
             if (selected.cc) setData('cc', selected.cc);
             if (selected.hectares) setData('hectares', selected.hectares.toString());
             if (selected.num_plants) setData('num_plants', selected.num_plants.toString());
             if (selected.season) setData('planting_year', selected.season.split('-')[0]);
+        }
+    };
+
+    const handleCostCenterChange = (costCenterId: string) => {
+        setData('cost_center_id', costCenterId);
+        const selected = costCenters.find((cc) => cc.id.toString() === costCenterId);
+        if (selected) {
+            setData('cc', selected.code);
+            if (selected.hectares) setData('hectares', selected.hectares.toString());
+            if (selected.plants_count) setData('num_plants', selected.plants_count.toString());
         }
     };
 
@@ -110,21 +137,35 @@ export default function Edit({ planning, fields, plantings, taskTypes, laborType
         if (!laborType) return;
 
         const name = laborType.name.toLowerCase();
-        let total = 0;
-        const val = Number(data.value_planned) || 0;
+        let plannedTotal = 0;
+        let estimateTotal = 0;
+        const plannedValue = Number(data.value_planned) || 0;
+        const estimateValue = Number(data.value_estimated_2) || 0;
 
         if (name.includes('trato')) {
             const plants = Number(data.num_plants) || 0;
-            total = plants * val;
+            plannedTotal = plants * plannedValue;
+            estimateTotal = plants * estimateValue;
         } else if (name.includes('d¡a') || name.includes('dia')) {
             const jh = Number(data.total_jh_planned) || 0;
-            total = jh * val;
+            plannedTotal = jh * plannedValue;
+            estimateTotal = jh * estimateValue;
         }
 
-        if (total > 0) {
-            setData('total_value_planned', total.toFixed(2));
+        if (plannedTotal > 0) {
+            setData('total_value_planned', plannedTotal.toFixed(2));
         }
-    }, [data.labor_type_id, data.num_plants, data.total_jh_planned, data.value_planned]);
+
+        if (estimateTotal > 0) {
+            setData('total_value_estimated_2', estimateTotal.toFixed(2));
+        }
+    }, [
+        data.labor_type_id,
+        data.num_plants,
+        data.total_jh_planned,
+        data.value_planned,
+        data.value_estimated_2,
+    ]);
 
     return (
         <AuthenticatedLayout
@@ -189,13 +230,13 @@ export default function Edit({ planning, fields, plantings, taskTypes, laborType
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Sector</label>
+                                    <label className="block text-sm font-medium text-gray-700">Campo</label>
                                     <select
                                         value={data.field_id}
                                         onChange={(e) => setData('field_id', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                     >
-                                        <option value="">Seleccione Sector</option>
+                                        <option value="">Seleccione Campo</option>
                                         {fields.map((f) => (
                                             <option key={f.id} value={f.id}>
                                                 {f.name}
@@ -205,7 +246,23 @@ export default function Edit({ planning, fields, plantings, taskTypes, laborType
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Siembra (opcional)</label>
+                                    <label className="block text-sm font-medium text-gray-700">Centro de Costo</label>
+                                    <select
+                                        value={data.cost_center_id}
+                                        onChange={(e) => handleCostCenterChange(e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    >
+                                        <option value="">Seleccione Centro</option>
+                                        {costCenters.map((cc) => (
+                                            <option key={cc.id} value={cc.id}>
+                                                {cc.code} - {cc.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Labor (opcional)</label>
                                     <select
                                         value={data.planting_id}
                                         onChange={(e) => handlePlantingSelect(e.target.value)}
@@ -218,7 +275,7 @@ export default function Edit({ planning, fields, plantings, taskTypes, laborType
                                             </option>
                                         ))}
                                     </select>
-                                    <p className="text-xs text-gray-500 mt-1">Si aplica, selecciona la siembra para autocompletar datos.</p>
+                                    <p className="text-xs text-gray-500 mt-1">Si aplica, selecciona la labor para autocompletar datos.</p>
                                 </div>
 
                                 <div>
@@ -314,6 +371,75 @@ export default function Edit({ planning, fields, plantings, taskTypes, laborType
                                         value={data.total_value_planned}
                                         onChange={(e) => setData('total_value_planned', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 font-bold text-blue-600"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-3 border-b-2 border-indigo-100 pb-2 mb-2 mt-6">
+                                    <h3 className="font-bold text-indigo-800 uppercase text-sm">1.5 Segunda Estimación</h3>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Nº JH (E2)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={data.num_jh_estimated_2}
+                                        onChange={(e) => setData('num_jh_estimated_2', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-indigo-200 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Rendimiento (E2)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={data.avg_yield_estimated_2}
+                                        onChange={(e) => setData('avg_yield_estimated_2', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-indigo-200 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">JH Totales (E2)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={data.total_jh_estimated_2}
+                                        onChange={(e) => setData('total_jh_estimated_2', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-indigo-200 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Días Efectivos (E2)</label>
+                                    <input
+                                        type="number"
+                                        value={data.effective_days_estimated_2}
+                                        onChange={(e) => setData('effective_days_estimated_2', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-indigo-200 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Valor Unitario (E2)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={data.value_estimated_2}
+                                        onChange={(e) => setData('value_estimated_2', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-indigo-200 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Costo Total (E2)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={data.total_value_estimated_2}
+                                        onChange={(e) => setData('total_value_estimated_2', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-indigo-200 shadow-sm focus:border-green-500 focus:ring-green-500"
                                     />
                                 </div>
 

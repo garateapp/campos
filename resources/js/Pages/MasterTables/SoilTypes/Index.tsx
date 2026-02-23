@@ -59,7 +59,7 @@ export default function Index({ soilTypes }: SoilTypesIndexProps) {
 
     const handleDelete = (soilType: SoilType) => {
         if (soilType.fields_count > 0) {
-            alert('No se puede eliminar un tipo de suelo con parcelas asociadas.');
+            alert('No se puede eliminar un tipo de suelo con campos asociadas.');
             return;
         }
 
@@ -81,7 +81,7 @@ export default function Index({ soilTypes }: SoilTypesIndexProps) {
                                 Gestionar Tipos de Suelo
                             </h2>
                             <p className="text-sm text-gray-500">
-                                Definiciones de suelo para tus parcelas (Arcilloso, Arenoso, etc.)
+                                Definiciones de suelo para tus campos (Arcilloso, Arenoso, etc.)
                             </p>
                         </div>
                     </div>
@@ -103,7 +103,7 @@ export default function Index({ soilTypes }: SoilTypesIndexProps) {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Parcelas</th>
+                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Campos</th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>

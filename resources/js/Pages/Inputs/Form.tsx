@@ -75,7 +75,7 @@ export default function Form({ input, fields, categories }: InputFormProps) {
                             </div>
 
                             <div>
-                                <InputLabel htmlFor="field_id" value="Parcela / Ubicación" />
+                                <InputLabel htmlFor="field_id" value="Campo / Ubicación" />
                                 <select
                                     id="field_id"
                                     name="field_id"
@@ -83,13 +83,13 @@ export default function Form({ input, fields, categories }: InputFormProps) {
                                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring-green-500"
                                     onChange={(e) => setData('field_id', e.target.value)}
                                 >
-                                    <option value="">Bodega General (Sin parcela)</option>
+                                    <option value="">Bodega General (Sin campo)</option>
                                     {fields.map(field => (
                                         <option key={field.id} value={field.id}>{field.name}</option>
                                     ))}
                                 </select>
                                 <p className="mt-1 text-xs text-gray-500">
-                                    Asocia este insumo a una parcela específica para mejor control.
+                                    Asocia este insumo a una campo específica para mejor control.
                                 </p>
                                 <InputError message={errors.field_id} className="mt-2" />
                             </div>

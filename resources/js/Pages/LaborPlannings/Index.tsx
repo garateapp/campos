@@ -231,7 +231,7 @@ export default function Index({ plannings, filters, summary }: IndexProps) {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th rowSpan={2} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sector/Labor</th>
+                                        <th rowSpan={2} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campo/Labor</th>
                                         <th rowSpan={2} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Especie/Var</th>
                                         <th colSpan={3} className="px-3 py-2 text-center text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50/50">Planificado</th>
                                         <th colSpan={3} className="px-3 py-2 text-center text-xs font-bold text-green-600 uppercase tracking-wider bg-green-50/50">Real</th>

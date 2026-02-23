@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\Field;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class AdminUserController extends Controller
 {
     public function index(): Response
     {
-        $users = User::with(['company:id,name', 'role:id,name,display_name'])
+        $users = User::with(['company:id,name', 'role:id,name,display_name', 'fields:id,name'])
             ->orderBy('name')
             ->get([
                 'id',
@@ -22,6 +23,7 @@ class AdminUserController extends Controller
                 'email',
                 'phone',
                 'company_id',
+                'field_id',
                 'role_id',
                 'is_active',
                 'last_login_at',
@@ -31,6 +33,7 @@ class AdminUserController extends Controller
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
             'companies' => Company::orderBy('name')->get(['id', 'name']),
+            'fields' => Field::orderBy('name')->get(['id', 'name']),
             'roles' => Role::orderBy('name')->get(['id', 'name', 'display_name']),
         ]);
     }
@@ -43,6 +46,9 @@ class AdminUserController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:50',
             'company_id' => 'required|exists:companies,id',
+            'field_id' => 'nullable|exists:fields,id',
+            'field_ids' => 'nullable|array',
+            'field_ids.*' => 'exists:fields,id',
             'role_id' => 'required|exists:roles,id',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -53,9 +59,21 @@ class AdminUserController extends Controller
             'password' => Hash::make($validated['password']),
             'phone' => $validated['phone'] ?? null,
             'company_id' => $validated['company_id'],
+            'field_id' => $validated['field_id'] ?? null,
             'role_id' => $validated['role_id'],
             'is_active' => $validated['is_active'] ?? true,
         ]);
+
+        $role = Role::find($validated['role_id']);
+        $fieldIds = $request->input('field_ids', []);
+        if (in_array($role?->name, ['admin', 'agronomist'], true)) {
+            $user = User::where('email', $validated['email'])->first();
+            $user?->fields()->sync($fieldIds);
+            if ($user && $user->field_id) {
+                $user->field_id = null;
+                $user->save();
+            }
+        }
 
         return redirect()->back()->with('success', 'Usuario creado.');
     }
@@ -68,6 +86,9 @@ class AdminUserController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
             'phone' => 'nullable|string|max:50',
             'company_id' => 'required|exists:companies,id',
+            'field_id' => 'nullable|exists:fields,id',
+            'field_ids' => 'nullable|array',
+            'field_ids.*' => 'exists:fields,id',
             'role_id' => 'required|exists:roles,id',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -77,6 +98,7 @@ class AdminUserController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'company_id' => $validated['company_id'],
+            'field_id' => $validated['field_id'] ?? null,
             'role_id' => $validated['role_id'],
             'is_active' => $validated['is_active'] ?? $user->is_active,
         ]);
@@ -86,6 +108,18 @@ class AdminUserController extends Controller
         }
 
         $user->save();
+
+        $role = Role::find($validated['role_id']);
+        $fieldIds = $request->input('field_ids', []);
+        if (in_array($role?->name, ['admin', 'agronomist'], true)) {
+            $user->fields()->sync($fieldIds);
+            if ($user->field_id) {
+                $user->field_id = null;
+                $user->save();
+            }
+        } else {
+            $user->fields()->sync([]);
+        }
 
         return redirect()->back()->with('success', 'Usuario actualizado.');
     }

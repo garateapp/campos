@@ -19,7 +19,7 @@ export default function Index({ fields }: Props) {
 
     const reports = [
         { id: 'harvest-logs', name: 'Bitácora de Cosechas', description: 'Registro detallado de todas las recepciones de fruta, kilos, calidad y destino.' },
-        { id: 'application-logs', name: 'Registro de Aplicaciones (GlobalGAP)', description: 'Historial de uso de insumos, fertilizantes y agroquímicos por sector.' },
+        { id: 'application-logs', name: 'Registro de Aplicaciones (GlobalGAP)', description: 'Historial de uso de insumos, fertilizantes y agroquímicos por campo.' },
     ];
 
     const handleDownload = () => {
@@ -58,6 +58,18 @@ export default function Index({ fields }: Props) {
                                     className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50"
                                 >
                                     Ver Cosecha Recolectada
+                                </Link>
+                                <Link
+                                    href={route('reports.attendance-daily')}
+                                    className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                    Ver Asistencia Diaria
+                                </Link>
+                                <Link
+                                    href={route('reports.attendance-monthly')}
+                                    className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                    Ver Asistencia Mensual
                                 </Link>
                             </div>
 
@@ -113,13 +125,13 @@ export default function Index({ fields }: Props) {
                                 </div>
 
                                 <div className="col-span-1 md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700">Filtrar por Sector (Opcional)</label>
+                                    <label className="block text-sm font-medium text-gray-700">Filtrar por Campo (Opcional)</label>
                                     <select
                                         value={form.field_id}
                                         onChange={(e) => setForm({ ...form, field_id: e.target.value })}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                                     >
-                                        <option value="">Todos los sectores</option>
+                                        <option value="">Todos los campos</option>
                                         {fields.map(f => (
                                             <option key={f.id} value={f.id}>{f.name}</option>
                                         ))}

@@ -97,7 +97,7 @@ export default function Index({ company, stats, financial, recentTasks, lowStock
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <StatCard
-                            title="Parcelas"
+                            title="Campos"
                             value={stats.fieldsCount.toString()}
                             subtitle={`${stats.totalHectares} hectáreas totales`}
                             icon="🌾"
@@ -248,12 +248,12 @@ export default function Index({ company, stats, financial, recentTasks, lowStock
                     <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                         <h3 className="font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            <QuickActionButton href={route('fields.create')} icon="🗺️" label="Nueva Parcela" />
-                            <QuickActionButton href={route('plantings.create')} icon="🌱" label="Nueva Siembra" />
+                            <QuickActionButton href={route('fields.create')} icon="🗺️" label="Nuevo Campo" />
+                            <QuickActionButton href={route('plantings.create')} icon="🌱" label="Nueva Labor" />
                             <QuickActionButton href={route('tasks.create')} icon="📋" label="Nueva Tarea" />
                             <QuickActionButton href={route('inputs.create')} icon="📦" label="Nuevo Insumo" />
                             <QuickActionButton href={route('costs.create')} icon="💰" label="Registrar Costo" />
-                            <QuickActionButton href={route('crops.index')} icon="🌿" label="Ver Cultivos" />
+                            <QuickActionButton href={route('crops.index')} icon="🌿" label="Ver Cuarteles" />
                         </div>
                     </div>
                 </div>

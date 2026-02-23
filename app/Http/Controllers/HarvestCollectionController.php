@@ -3,12 +3,18 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class HarvestCollectionController extends Controller
 {
     public function index()
     {
-        $fields = \App\Models\Field::where('company_id', \Illuminate\Support\Facades\Auth::user()->company_id)->orderBy('name')->get();
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $fieldIds = $user->fieldScopeIds();
+        $fields = \App\Models\Field::where('company_id', $user->company_id)
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->orderBy('name')
+            ->get();
         // Load HarvestContainers with Species for filtering
         $containers = \App\Models\HarvestContainer::where('company_id', \Illuminate\Support\Facades\Auth::user()->company_id)
             ->with('species')
@@ -25,15 +31,26 @@ class HarvestCollectionController extends Controller
 
     public function store(\Illuminate\Http\Request $request)
     {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $request->merge(['field_id' => $fieldIds[0]]);
+        }
+
+        $fieldRules = ['required', 'exists:fields,id'];
+        if ($fieldIds !== null) {
+            $fieldRules[] = Rule::in($fieldIds);
+        }
+
         $request->validate([
             'card_code' => 'required|string',
             'date' => 'required|date',
-            'field_id' => 'required|exists:fields,id',
+            'field_id' => $fieldRules,
             'harvest_container_id' => 'required|exists:harvest_containers,id',
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id;
+        $companyId = $user->company_id;
 
         // 1. Find Card
         $card = \App\Models\Card::where('company_id', $companyId)

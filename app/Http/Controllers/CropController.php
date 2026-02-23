@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Crop;
+use App\Models\CostCenter;
 use App\Models\Family;
 use App\Models\Species;
 use App\Models\Variety;
@@ -20,8 +21,13 @@ class CropController extends Controller
      */
     public function index(): Response
     {
-        $crops = Crop::with(['species.family', 'varietyEntity', 'varieties', 'field'])
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        $crops = Crop::with(['species.family', 'varietyEntity', 'varieties', 'field', 'costCenter'])
             ->withCount('plantings')
+            ->when($fieldIds !== null, function ($query) use ($fieldIds) {
+                $query->whereIn('field_id', $fieldIds);
+            })
             ->orderBy('name')
             ->get()
             ->map(fn ($crop) => [
@@ -34,6 +40,7 @@ class CropController extends Controller
                 'days_to_harvest' => $crop->days_to_harvest,
                 'plantings_count' => $crop->plantings_count,
                 'field_name' => $crop->field?->name,
+                'cost_center_code' => $crop->costCenter?->code,
             ]);
 
         return Inertia::render('Crops/Index', [
@@ -46,13 +53,19 @@ class CropController extends Controller
      */
     public function create(): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $families = Family::with(['species.varieties'])->orderBy('name')->get();
-        $fields = \App\Models\Field::orderBy('name')->get(['id', 'name']);
+        $fields = \App\Models\Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name']);
+        $costCenters = CostCenter::orderBy('code')->get(['id', 'code', 'name']);
 
         return Inertia::render('Crops/Form', [
             'crop' => null,
             'families' => $families,
             'fields' => $fields,
+            'costCenters' => $costCenters,
         ]);
     }
 
@@ -61,8 +74,11 @@ class CropController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
         $validated = $request->validate([
             'field_id' => 'nullable|exists:fields,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'species_id' => 'required|exists:species,id',
             'variety_ids' => 'nullable|array',
             'variety_ids.*' => 'exists:varieties,id',
@@ -75,6 +91,10 @@ class CropController extends Controller
 
         $primaryVarietyId = Arr::first($validated['variety_ids'] ?? []) ?: null;
         $payload = Arr::except($validated, ['variety_ids']);
+
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $payload['field_id'] = $fieldIds[0];
+        }
 
         // If name is not provided, use species name
         if (empty($payload['name'])) {
@@ -92,7 +112,7 @@ class CropController extends Controller
             $crop->varieties()->sync($validated['variety_ids']);
         }
 
-        return redirect()->route('crops.index')->with('success', 'Cultivo creado exitosamente.');
+        return redirect()->route('crops.index')->with('success', 'Cuartel creado exitosamente.');
     }
 
     /**
@@ -100,8 +120,17 @@ class CropController extends Controller
      */
     public function edit(Crop $crop): Response
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $crop->field_id && !in_array($crop->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este cuartel.');
+        }
+
         $families = Family::with(['species.varieties'])->orderBy('name')->get();
-        $fields = \App\Models\Field::orderBy('name')->get(['id', 'name']);
+        $fields = \App\Models\Field::orderBy('name')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get(['id', 'name']);
+        $costCenters = CostCenter::orderBy('code')->get(['id', 'code', 'name']);
         $crop->load(['species.family', 'varieties']);
 
         return Inertia::render('Crops/Form', [
@@ -111,6 +140,7 @@ class CropController extends Controller
             ]),
             'families' => $families,
             'fields' => $fields,
+            'costCenters' => $costCenters,
         ]);
     }
 
@@ -119,8 +149,15 @@ class CropController extends Controller
      */
     public function update(Request $request, Crop $crop)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $crop->field_id && !in_array($crop->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este cuartel.');
+        }
+
         $validated = $request->validate([
             'field_id' => 'nullable|exists:fields,id',
+            'cost_center_id' => 'nullable|exists:cost_centers,id',
             'species_id' => 'required|exists:species,id',
             'variety_ids' => 'nullable|array',
             'variety_ids.*' => 'exists:varieties,id',
@@ -134,6 +171,10 @@ class CropController extends Controller
         $primaryVarietyId = Arr::first($validated['variety_ids'] ?? []) ?: null;
         $payload = Arr::except($validated, ['variety_ids']);
 
+        if ($fieldIds !== null && count($fieldIds) === 1) {
+            $payload['field_id'] = $fieldIds[0];
+        }
+
         $crop->update([
             'company_id' => auth()->user()->company_id,
             'variety_id' => $primaryVarietyId,
@@ -144,7 +185,7 @@ class CropController extends Controller
             $crop->varieties()->sync($validated['variety_ids'] ?? []);
         }
 
-        return redirect()->route('crops.index')->with('success', 'Cultivo actualizado.');
+        return redirect()->route('crops.index')->with('success', 'Cuartel actualizado.');
     }
 
     /**
@@ -152,13 +193,19 @@ class CropController extends Controller
      */
     public function destroy(Crop $crop)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && $crop->field_id && !in_array($crop->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a este cuartel.');
+        }
+
         if ($crop->plantings()->exists()) {
-            return redirect()->back()->with('error', 'No se puede eliminar un cultivo con siembras asociadas.');
+            return redirect()->back()->with('error', 'No se puede eliminar un cuartel con labores asociadas.');
         }
 
         $crop->delete();
 
-        return redirect()->route('crops.index')->with('success', 'Cultivo eliminado.');
+        return redirect()->route('crops.index')->with('success', 'Cuartel eliminado.');
     }
 
     /**
@@ -220,7 +267,7 @@ class CropController extends Controller
             return back()->with('error', 'Fallo inesperado: ' . $e->getMessage());
         }
 
-        return back()->with('success', "Importacion exitosa. Cultivos creados: {$created} de {$total}");
+        return back()->with('success', "Importacion exitosa. Cuarteles creados: {$created} de {$total}");
     }
 
     private function readCsv(string $path)

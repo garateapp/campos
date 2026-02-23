@@ -55,7 +55,7 @@ export default function HarvestDaily({ rows, fields, filters }: Props) {
                                 Cosecha por Campo y Dia
                             </h2>
                             <p className="text-sm text-gray-500">
-                                Totales diarios agrupados por sector.
+                                Totales diarios agrupados por campo.
                             </p>
                         </div>
                     </div>
@@ -89,7 +89,7 @@ export default function HarvestDaily({ rows, fields, filters }: Props) {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Sector</label>
+                                <label className="block text-sm font-medium text-gray-700">Campo</label>
                                 <select
                                     value={form.field_id}
                                     onChange={(e) => setForm({ ...form, field_id: e.target.value })}
@@ -136,7 +136,7 @@ export default function HarvestDaily({ rows, fields, filters }: Props) {
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sector</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campo</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Kilos</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
                                     </tr>

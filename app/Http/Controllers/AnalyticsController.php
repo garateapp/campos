@@ -14,18 +14,30 @@ class AnalyticsController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
         $currentYear = $request->input('year', date('Y'));
         $previousYear = $currentYear - 1;
+        $fieldIds = $user->fieldScopeIds();
 
         // 1. Harvest Trends (Monthly) - Current vs Previous
         $harvestsCurrent = Harvest::selectRaw('MONTH(harvest_date) as month, SUM(quantity_kg) as total')
             ->whereYear('harvest_date', $currentYear)
+            ->when($fieldIds !== null, function ($q) use ($fieldIds) {
+                $q->whereHas('planting', function ($planting) use ($fieldIds) {
+                    $planting->whereIn('field_id', $fieldIds);
+                });
+            })
             ->groupBy('month')
             ->pluck('total', 'month')
             ->toArray();
 
         $harvestsPrev = Harvest::selectRaw('MONTH(harvest_date) as month, SUM(quantity_kg) as total')
             ->whereYear('harvest_date', $previousYear)
+            ->when($fieldIds !== null, function ($q) use ($fieldIds) {
+                $q->whereHas('planting', function ($planting) use ($fieldIds) {
+                    $planting->whereIn('field_id', $fieldIds);
+                });
+            })
             ->groupBy('month')
             ->pluck('total', 'month')
             ->toArray();
@@ -38,7 +50,9 @@ class AnalyticsController extends Controller
         }
 
         // 2. Efficiency per Field (Yield kg/ha)
-        $fields = Field::with('plantings')->get();
+        $fields = Field::with('plantings')
+            ->when($fieldIds !== null, fn ($q) => $q->whereIn('id', $fieldIds))
+            ->get();
         $efficiencyData = $fields->map(function ($field) use ($currentYear) {
             // Get total harvest for this field in current year
             $harvestTotal = Harvest::whereHas('planting', function ($q) use ($field) {
@@ -56,6 +70,12 @@ class AnalyticsController extends Controller
         // 3. Cost Distribution
         $costs = Cost::selectRaw('type, SUM(amount) as total')
             ->whereYear('cost_date', $currentYear)
+            ->when($fieldIds !== null, function ($q) use ($fieldIds) {
+                $q->whereIn('field_id', $fieldIds)
+                    ->orWhereHas('planting', function ($planting) use ($fieldIds) {
+                        $planting->whereIn('field_id', $fieldIds);
+                    });
+            })
             ->groupBy('type')
             ->get();
 

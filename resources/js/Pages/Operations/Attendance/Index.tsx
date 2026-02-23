@@ -84,7 +84,7 @@ export default function Index({ fields, taskTypes }: IndexProps) {
                                 <InputError message={errors.date} className="mt-2" />
                             </div>
                             <div>
-                                <InputLabel htmlFor="field_id" value="Cuartel/Sector *" />
+                                <InputLabel htmlFor="field_id" value="Cuartel/Campo *" />
                                 <select
                                     id="field_id"
                                     className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"

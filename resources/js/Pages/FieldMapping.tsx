@@ -42,7 +42,7 @@ const FieldMapping: React.FC = () => {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64 = (reader.result as string).split(',')[1];
-                const result = await analyzeCropImage(base64, "Describe la salud de este cultivo y sugiere mejoras en español.");
+                const result = await analyzeCropImage(base64, "Describe la salud de este cuartel y sugiere mejoras en español.");
                 setAiInsight(result || "No se detectaron problemas.");
                 setAnalyzing(false);
             };
@@ -58,11 +58,11 @@ const FieldMapping: React.FC = () => {
         <AuthenticatedLayout
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Mapa de Parcelas e Inventario
+                    Mapa de Campos e Inventario
                 </h2>
             }
         >
-            <Head title="Mapa de Parcelas" />
+            <Head title="Mapa de Campos" />
 
             <div className="flex h-[calc(100vh-160px)] w-full overflow-hidden bg-white rounded-xl shadow-sm border border-gray-100">
                 {/* Sidebar Inventory */}
@@ -79,7 +79,7 @@ const FieldMapping: React.FC = () => {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                placeholder="Filtrar parcelas..."
+                                placeholder="Filtrar campos..."
                             />
                         </div>
                     </div>
@@ -89,7 +89,7 @@ const FieldMapping: React.FC = () => {
                         ))}
                         {filteredFields.length === 0 && (
                             <div className="p-4 text-center text-gray-400 text-sm">
-                                No se encontraron parcelas.
+                                No se encontraron campos.
                             </div>
                         )}
                     </div>
