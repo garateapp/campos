@@ -19,6 +19,13 @@ class HarvestCollection extends Model
         'harvest_container_id',
         'quantity',
         'field_id',
+        'is_bin_completed',
+        'manual_bin_units',
+    ];
+
+    protected $casts = [
+        'is_bin_completed' => 'boolean',
+        'manual_bin_units' => 'integer',
     ];
 
     public function worker(): BelongsTo

@@ -29,7 +29,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user = User::where('email', $request->email)->firstOrFail();
+        $user = User::with('field:id,name')->where('email', $request->email)->firstOrFail();
 
         // Check if user belongs to a company
         if (!$user->company_id) {
@@ -50,6 +50,8 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'company_id' => $user->company_id,
+                'field_id' => $user->field_id,
+                'field_name' => $user->field?->name,
             ]
         ]);
     }

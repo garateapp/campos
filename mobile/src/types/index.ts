@@ -27,6 +27,8 @@ export interface HarvestContainer {
     id: number;
     name: string;
     species_id: number;
+    quantity_per_bin?: number | null;
+    bin_weight_kg?: number | null;
 }
 
 export interface CardAssignment {
@@ -57,6 +59,8 @@ export interface HarvestCollection {
     harvest_container_id: number;
     quantity: number;
     field_id: number;
+    is_bin_completed?: number;
+    manual_bin_units?: number | null;
     created_at_ms?: number;
     synced?: number;
 }

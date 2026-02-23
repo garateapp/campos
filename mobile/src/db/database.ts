@@ -123,9 +123,13 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS harvest_containers (
         id INTEGER PRIMARY KEY,
         name TEXT,
-        species_id INTEGER
+        species_id INTEGER,
+        quantity_per_bin INTEGER,
+        bin_weight_kg REAL
     );
   `);
+    await ensureColumn('harvest_containers', 'quantity_per_bin', 'quantity_per_bin INTEGER');
+    await ensureColumn('harvest_containers', 'bin_weight_kg', 'bin_weight_kg REAL');
 
     // Card Assignments (Local Copy)
     await database.execAsync(`
@@ -165,11 +169,15 @@ export const initDB = async () => {
         harvest_container_id INTEGER,
         quantity INTEGER,
         field_id INTEGER,
+        is_bin_completed INTEGER DEFAULT 0,
+        manual_bin_units INTEGER,
         created_at_ms INTEGER,
         synced INTEGER DEFAULT 0
     );
   `);
     await ensureColumn('harvest_collections', 'card_id', 'card_id INTEGER');
+    await ensureColumn('harvest_collections', 'is_bin_completed', 'is_bin_completed INTEGER DEFAULT 0');
+    await ensureColumn('harvest_collections', 'manual_bin_units', 'manual_bin_units INTEGER');
     await ensureColumn('harvest_collections', 'created_at_ms', 'created_at_ms INTEGER');
 
     // Crops catalog

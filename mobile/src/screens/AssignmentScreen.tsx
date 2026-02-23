@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Switch, TextInput, ScrollView } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { getDB } from '../db/database';
 import Scanner from '../components/Scanner';
 import { Field, TaskType, Worker } from '../types';
@@ -13,6 +14,8 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
     const [fields, setFields] = useState<Field[]>([]);
     const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
     const [selectedField, setSelectedField] = useState<Field | null>(null);
+    const [defaultFieldId, setDefaultFieldId] = useState<number | null>(null);
+    const [hasAppliedDefaultField, setHasAppliedDefaultField] = useState(false);
     const [selectedTaskType, setSelectedTaskType] = useState<TaskType | null>(null);
     const [scannerMode, setScannerMode] = useState<'card' | null>(null);
     const [identityChecked, setIdentityChecked] = useState(false);
@@ -22,13 +25,61 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
 
     useEffect(() => {
         loadWorkers();
+        loadDefaultFieldFromUser();
         loadMeta();
     }, []);
+
+    useEffect(() => {
+        if (hasAppliedDefaultField || selectedField || !defaultFieldId || fields.length === 0) {
+            return;
+        }
+
+        const fieldFromUser = fields.find((f) => f.id === defaultFieldId) || null;
+        if (fieldFromUser) {
+            setSelectedField(fieldFromUser);
+        }
+        setHasAppliedDefaultField(true);
+    }, [defaultFieldId, fields, selectedField, hasAppliedDefaultField]);
+
+    const getDefaultFieldFromCatalog = () => {
+        if (!defaultFieldId) return null;
+        return fields.find((f) => f.id === defaultFieldId) || null;
+    };
+
+    const resetForm = () => {
+        setSelectedWorker(null);
+        setIdentityChecked(false);
+        setSelectedField(getDefaultFieldFromCatalog());
+        setSelectedTaskType(null);
+        setShowTaskTypes(false);
+        setScannerMode(null);
+    };
+
+    const handleAssignModeChange = (value: boolean) => {
+        setAssignMode(value);
+        if (!value) {
+            resetForm();
+        }
+    };
 
     const loadWorkers = async () => {
         const db = await getDB();
         const result = await db.getAllAsync('SELECT * FROM workers ORDER BY name');
         setWorkers(result as Worker[]);
+    };
+
+    const loadDefaultFieldFromUser = async () => {
+        try {
+            const rawUser = await SecureStore.getItemAsync('auth_user');
+            if (!rawUser) return;
+            const user = JSON.parse(rawUser);
+            const parsedId = Number(user?.field_id);
+            if (Number.isInteger(parsedId) && parsedId > 0) {
+                setDefaultFieldId(parsedId);
+            }
+        } catch (e) {
+            // ignore corrupted auth_user payload
+        }
     };
 
     const loadMeta = async () => {
@@ -44,7 +95,6 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
             Alert.alert('Validaci¢n requerida', 'Confirma la identidad del jornalero antes de asignar.');
             return;
         }
-        if (!selectedWorker) return;
         if (assignMode && (!selectedField || !selectedTaskType)) {
             Alert.alert('Faltan datos', 'Selecciona el campo y el tipo de tarea.');
             return;
@@ -59,16 +109,21 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
         }
 
         const today = new Date().toISOString().split('T')[0];
+        const activeAssignment: any = await db.getFirstAsync(
+            'SELECT worker_id FROM card_assignments WHERE card_id = ? AND date = ? AND deleted_at IS NULL',
+            cardResult.id,
+            today
+        );
 
         try {
             if (assignMode) {
-                const existing: any = await db.getFirstAsync(
-                    'SELECT worker_id FROM card_assignments WHERE card_id = ? AND date = ?',
-                    cardResult.id,
-                    today
-                );
-                if (existing) {
-                    if (existing.worker_id === selectedWorker.id) {
+                if (!selectedWorker) {
+                    Alert.alert('Falta trabajador', 'Selecciona un trabajador antes de asignar.');
+                    return;
+                }
+
+                if (activeAssignment) {
+                    if (activeAssignment.worker_id === selectedWorker.id) {
                         Alert.alert('Aviso', 'Esta tarjeta ya est  asignada a este trabajador hoy.');
                     } else {
                         Alert.alert('Error', 'Esta tarjeta ya est  asignada a otro trabajador hoy.');
@@ -110,23 +165,19 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
 
                 Alert.alert('Success', `Card ${code} asignada a ${selectedWorker.name}`);
             } else {
-                const existing: any = await db.getFirstAsync(
-                    'SELECT worker_id FROM card_assignments WHERE card_id = ? AND date = ?',
-                    cardResult.id,
-                    today
-                );
-                if (!existing) {
+                if (!activeAssignment) {
                     Alert.alert('Aviso', 'Esta tarjeta no est  asignada hoy.');
                     return;
                 }
-                if (existing.worker_id !== selectedWorker.id) {
-                    Alert.alert('Error', 'La tarjeta pertenece a otro trabajador.');
-                    return;
-                }
+
+                const assignedWorker: any = await db.getFirstAsync(
+                    'SELECT id, name FROM workers WHERE id = ?',
+                    activeAssignment.worker_id
+                );
 
                 const deletedAt = new Date().toISOString();
                 await db.runAsync(
-                    'UPDATE card_assignments SET deleted_at = ?, synced = 0 WHERE card_id = ? AND date = ?',
+                    'UPDATE card_assignments SET deleted_at = ?, synced = 0 WHERE card_id = ? AND date = ? AND deleted_at IS NULL',
                     deletedAt,
                     cardResult.id,
                     today
@@ -136,18 +187,15 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
                 await db.runAsync(
                     'UPDATE attendances SET check_out_time = ?, synced = 0 WHERE worker_id = ? AND date = ?',
                     time,
-                    selectedWorker.id,
+                    activeAssignment.worker_id,
                     today
                 );
 
-                Alert.alert('Success', `Card ${code} desasignada de ${selectedWorker.name}`);
+                const assignedWorkerName = assignedWorker?.name || `ID ${activeAssignment.worker_id}`;
+                Alert.alert('Success', `Card ${code} desasignada de ${assignedWorkerName}`);
             }
 
-            setSelectedWorker(null);
-            setIdentityChecked(false);
-            setSelectedField(null);
-            setSelectedTaskType(null);
-            setScannerMode(null);
+            resetForm();
         } catch (e) {
             Alert.alert('Error', 'Failed to save assignment');
         }
@@ -199,10 +247,6 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
     };
 
     const createWorker = async () => {
-        if (!assignMode) {
-            Alert.alert('Aviso', 'Para desasignar seleccione un trabajador existente.');
-            return;
-        }
         if (!newWorker.name.trim()) {
             Alert.alert('Falta nombre', 'Ingresa el nombre del jornalero');
             return;
@@ -215,7 +259,7 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
         );
         setNewWorker({ name: '', rut: '' });
         await loadWorkers();
-        const insertedId = result.lastInsertRowId || result.insertId;
+        const insertedId = result.lastInsertRowId;
         const worker: any = await db.getFirstAsync('SELECT * FROM workers WHERE id = ?', insertedId);
         if (worker) {
             setSelectedWorker(worker as Worker);
@@ -249,25 +293,27 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
                 <Scanner onScanned={handleScan} onClose={() => setScannerMode(null)} showDebug />
             ) : (
                 <>
-                    <Text style={globalStyles.subtitle}>Seleccione Trabajador:</Text>
-                    {selectedWorker ? (
-                        <ScrollView style={globalStyles.card} contentContainerStyle={{ paddingBottom: 12 }}>
-                            <Text style={[globalStyles.text, { fontSize: 20, marginBottom: 20, fontWeight: 'bold', textAlign: 'center' }]}>
-                                {selectedWorker.name}
-                            </Text>
+                    <View style={[globalStyles.card, { marginBottom: 12 }]}>
+                        <View style={styles.identityRow}>
+                            <Text style={styles.identityLabel}>Asignar / Desasignar</Text>
+                            <Switch value={assignMode} onValueChange={handleAssignModeChange} />
+                        </View>
+                    </View>
 
-                            <View style={styles.identityRow}>
-                                <Text style={styles.identityLabel}>Asignar / Desasignar</Text>
-                                <Switch value={assignMode} onValueChange={setAssignMode} />
-                            </View>
+                    {assignMode ? (
+                        <>
+                            <Text style={globalStyles.subtitle}>Seleccione Trabajador:</Text>
+                            {selectedWorker ? (
+                                <ScrollView style={globalStyles.card} contentContainerStyle={{ paddingBottom: 12 }}>
+                                    <Text style={[globalStyles.text, { fontSize: 20, marginBottom: 20, fontWeight: 'bold', textAlign: 'center' }]}>
+                                        {selectedWorker.name}
+                                    </Text>
 
-                            <View style={styles.identityRow}>
-                                <Text style={styles.identityLabel}>Identidad verificada</Text>
-                                <Switch value={identityChecked} onValueChange={setIdentityChecked} />
-                            </View>
+                                    <View style={styles.identityRow}>
+                                        <Text style={styles.identityLabel}>Identidad verificada</Text>
+                                        <Switch value={identityChecked} onValueChange={setIdentityChecked} />
+                                    </View>
 
-                            {assignMode && (
-                                <>
                                     <Text style={styles.sectionLabel}>Campo</Text>
                                     {renderChipRow(fields, selectedField?.id ?? null, (id) => {
                                         const field = fields.find((f) => f.id === id) || null;
@@ -301,51 +347,61 @@ export default function AssignmentScreen({ onBack }: { onBack: () => void }) {
                                             </ScrollView>
                                         </View>
                                     )}
+
+                                    <TouchableOpacity style={globalStyles.button} onPress={() => setScannerMode('card')}>
+                                        <Text style={globalStyles.buttonText}>ESCANEAR TARJETA</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity style={[globalStyles.secondaryButton, { marginTop: 10 }]} onPress={() => setSelectedWorker(null)}>
+                                        <Text style={globalStyles.secondaryButtonText}>Cambiar Trabajador</Text>
+                                    </TouchableOpacity>
+                                </ScrollView>
+                            ) : (
+                                <>
+                                    <View style={globalStyles.card}>
+                                        <Text style={globalStyles.subtitle}>Nuevo Jornalero rápido</Text>
+                                        <TextInput
+                                            style={globalStyles.input}
+                                            placeholder="Nombre"
+                                            value={newWorker.name}
+                                            onChangeText={(value) => setNewWorker({ ...newWorker, name: value })}
+                                        />
+                                        <TextInput
+                                            style={globalStyles.input}
+                                            placeholder="RUT / ID"
+                                            value={newWorker.rut}
+                                            onChangeText={(value) => setNewWorker({ ...newWorker, rut: value })}
+                                        />
+                                        <TouchableOpacity style={globalStyles.button} onPress={createWorker}>
+                                            <Text style={globalStyles.buttonText}>Crear y asignar</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <FlatList
+                                        data={workers}
+                                        keyExtractor={(item) => item.id.toString()}
+                                        contentContainerStyle={{ paddingBottom: 20 }}
+                                        renderItem={({ item }) => (
+                                            <TouchableOpacity style={[globalStyles.card, { padding: 20 }]} onPress={() => { setSelectedWorker(item); setIdentityChecked(false); }}>
+                                                <Text style={[globalStyles.text, { fontSize: 18 }]}>{item.name}</Text>
+                                                <Text style={[globalStyles.text, { fontSize: 12, color: COLORS.textSecondary }]}>
+                                                    {item.rut || 'Sin RUT'} {item.is_identity_validated ? '• Validado' : ''}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    />
                                 </>
                             )}
-
+                        </>
+                    ) : (
+                        <View style={globalStyles.card}>
+                            <Text style={globalStyles.subtitle}>Desasignación por tarjeta</Text>
+                            <Text style={[globalStyles.text, { marginBottom: 16 }]}>
+                                Escanea la tarjeta y se desasignará automáticamente del trabajador actual.
+                            </Text>
                             <TouchableOpacity style={globalStyles.button} onPress={() => setScannerMode('card')}>
                                 <Text style={globalStyles.buttonText}>ESCANEAR TARJETA</Text>
                             </TouchableOpacity>
-
-                            <TouchableOpacity style={[globalStyles.secondaryButton, { marginTop: 10 }]} onPress={() => setSelectedWorker(null)}>
-                                <Text style={globalStyles.secondaryButtonText}>Cambiar Trabajador</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    ) : (
-                        <>
-                            <View style={globalStyles.card}>
-                                <Text style={globalStyles.subtitle}>Nuevo Jornalero rápido</Text>
-                                <TextInput
-                                    style={globalStyles.input}
-                                    placeholder="Nombre"
-                                    value={newWorker.name}
-                                    onChangeText={(value) => setNewWorker({ ...newWorker, name: value })}
-                                />
-                                <TextInput
-                                    style={globalStyles.input}
-                                    placeholder="RUT / ID"
-                                    value={newWorker.rut}
-                                    onChangeText={(value) => setNewWorker({ ...newWorker, rut: value })}
-                                />
-                                <TouchableOpacity style={globalStyles.button} onPress={createWorker} disabled={!assignMode}>
-                                    <Text style={globalStyles.buttonText}>Crear y asignar</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <FlatList
-                                data={workers}
-                                keyExtractor={(item) => item.id.toString()}
-                                contentContainerStyle={{ paddingBottom: 20 }}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity style={[globalStyles.card, { padding: 20 }]} onPress={() => { setSelectedWorker(item); setIdentityChecked(false); }}>
-                                        <Text style={[globalStyles.text, { fontSize: 18 }]}>{item.name}</Text>
-                                        <Text style={[globalStyles.text, { fontSize: 12, color: COLORS.textSecondary }]}>
-                                            {item.rut || 'Sin RUT'} {item.is_identity_validated ? '• Validado' : ''}
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                            />
-                        </>
+                        </View>
                     )}
                 </>
             )}

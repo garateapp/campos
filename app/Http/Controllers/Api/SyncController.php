@@ -65,9 +65,18 @@ class SyncController extends Controller
         // In V2 we can implement last_sync_at parameter
         Log::debug('Syncing data download for user ID: ' . ($request->user()->id ?? 'guest'));
         try{
+        $authUser = $request->user()?->loadMissing('field:id,name');
         $companyId = $request->user()->company_id ?? 1; // Fallback or auth check
 
         return response()->json([
+            'user' => $authUser ? [
+                'id' => $authUser->id,
+                'name' => $authUser->name,
+                'email' => $authUser->email,
+                'company_id' => $authUser->company_id,
+                'field_id' => $authUser->field_id,
+                'field_name' => $authUser->field?->name,
+            ] : null,
             'workers' => Worker::where('company_id', $companyId)->get(),
             // Mobile expects contractors as { id, name }. In the web DB model the display name is `business_name`.
             'contractors' => Contractor::where('company_id', $companyId)
@@ -283,6 +292,8 @@ class SyncController extends Controller
                         'harvest_container_id' => $record['harvest_container_id'],
                         'quantity' => $record['quantity'],
                         'field_id' => $record['field_id'] ?? null,
+                        'is_bin_completed' => !empty($record['is_bin_completed']),
+                        'manual_bin_units' => $record['manual_bin_units'] ?? null,
                     ]);
                     $processed['collections']++;
                 }

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 import { getDB, initDB } from '../db/database';
 
 // Replace with your computer's IP address
@@ -86,6 +87,15 @@ export const syncData = async (token: string) => {
         });
 
         const data = response.data;
+        if (data?.user) {
+            try {
+                const rawUser = await SecureStore.getItemAsync('auth_user');
+                const localUser = rawUser ? JSON.parse(rawUser) : {};
+                await SecureStore.setItemAsync('auth_user', JSON.stringify({ ...localUser, ...data.user }));
+            } catch (e) {
+                // ignore auth_user refresh errors
+            }
+        }
 
         await db.withTransactionAsync(async () => {
             // Workers (keep unsynced)
@@ -132,8 +142,15 @@ export const syncData = async (token: string) => {
 
             // Harvest Containers
             await db.execAsync('DELETE FROM harvest_containers');
-            for (const h of data.harvest_containers) {
-                await db.runAsync('INSERT INTO harvest_containers (id, name, species_id) VALUES (?, ?, ?)', h.id, h.name, h.species_id);
+            for (const h of data.harvest_containers || []) {
+                await db.runAsync(
+                    'INSERT INTO harvest_containers (id, name, species_id, quantity_per_bin, bin_weight_kg) VALUES (?, ?, ?, ?, ?)',
+                    h.id,
+                    h.name,
+                    h.species_id,
+                    h.quantity_per_bin ?? null,
+                    h.bin_weight_kg ?? null
+                );
             }
 
             // Task Types
