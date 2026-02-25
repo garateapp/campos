@@ -297,8 +297,8 @@ export default function HarvestScreen({ onBack }: { onBack: () => void }) {
         const lastDbMs = lastDb?.created_at_ms ? Number(lastDb.created_at_ms) : 0;
         const lastMemoryMs = lastScans[code] || 0;
         const lastSeen = Math.max(lastDbMs, lastMemoryMs);
-        if (lastSeen && now - lastSeen < 15 * 60 * 1000) {
-            Alert.alert('Leído', 'Esta tarjeta ya fue registrada en los últimos 15 minutos.', [
+        if (lastSeen && now - lastSeen < 1.5 * 60 * 1000) {
+            Alert.alert('Leído', 'Esta tarjeta ya fue registrada en los últimos 90 segundos .', [
                 { text: 'OK', onPress: () => setScanLocked(false) },
             ]);
             return;

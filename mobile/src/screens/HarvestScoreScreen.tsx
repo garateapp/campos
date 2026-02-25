@@ -52,6 +52,7 @@ export default function HarvestScoreScreen({ onBack }: { onBack: () => void }) {
         setLoadError(null);
         try {
             const db = await getDB();
+            const today = new Date().toISOString().split('T')[0];
             const containerInfo: any[] = await db.getAllAsync('PRAGMA table_info(harvest_containers)');
             const hasQuantityPerBin = containerInfo.some((c) => c.name === 'quantity_per_bin');
             const hasBinWeightKg = containerInfo.some((c) => c.name === 'bin_weight_kg');
@@ -75,7 +76,8 @@ export default function HarvestScoreScreen({ onBack }: { onBack: () => void }) {
                 SUM(CASE WHEN ${kgPerUnitExpr('h')} IS NULL THEN hc.quantity ELSE 0 END) AS unconfigured_units
             FROM harvest_collections hc
             LEFT JOIN harvest_containers h ON h.id = hc.harvest_container_id
-        `);
+            WHERE hc.date = ?
+        `, today);
 
             const workersRows: any[] = await db.getAllAsync(`
             SELECT
@@ -88,9 +90,10 @@ export default function HarvestScoreScreen({ onBack }: { onBack: () => void }) {
             FROM harvest_collections hc
             LEFT JOIN workers w ON w.id = hc.worker_id
             LEFT JOIN harvest_containers h ON h.id = hc.harvest_container_id
+            WHERE hc.date = ?
             GROUP BY hc.worker_id, w.name
             ORDER BY total_kg DESC, total_units DESC, worker_name ASC
-        `);
+        `, today);
 
             const perDayRow: any = await db.getFirstAsync(`
             SELECT
@@ -101,12 +104,14 @@ export default function HarvestScoreScreen({ onBack }: { onBack: () => void }) {
                 , SUM(hc.quantity) as total_day_units
                 FROM harvest_collections hc
                 LEFT JOIN harvest_containers h ON h.id = hc.harvest_container_id
+                WHERE hc.date = ?
                 GROUP BY hc.date
             ) AS day_totals
-        `);
+        `, today);
 
             const daysRow: any = await db.getFirstAsync(
-                'SELECT COUNT(DISTINCT date) as active_days FROM harvest_collections'
+                'SELECT COUNT(DISTINCT date) as active_days FROM harvest_collections WHERE date = ?',
+                today
             );
 
             const regs = Number(totalsRow?.regs || 0);
@@ -152,7 +157,7 @@ export default function HarvestScoreScreen({ onBack }: { onBack: () => void }) {
                 {
                     title: 'Promedio Diario',
                     value: totalKg > 0 ? `${formatKg(avgDayKg)} kg` : `${formatKg(avgDayUnits)} un`,
-                    hint: `${activeDays} días con registros`,
+                    hint: `${activeDays} días con registros (hoy)`,
                 },
             ]);
             setWorkerScores(normalizedWorkers);
@@ -161,10 +166,12 @@ export default function HarvestScoreScreen({ onBack }: { onBack: () => void }) {
             setLoadError('No se pudo calcular el score en kg. Mostrando acumulados por unidades.');
 
             const db = await getDB();
+            const today = new Date().toISOString().split('T')[0];
             const totalsFallback: any = await db.getFirstAsync(`
                 SELECT COUNT(id) AS regs, SUM(quantity) AS total_units
                 FROM harvest_collections
-            `);
+                WHERE date = ?
+            `, today);
 
             const workersFallback: any[] = await db.getAllAsync(`
                 SELECT
@@ -174,9 +181,10 @@ export default function HarvestScoreScreen({ onBack }: { onBack: () => void }) {
                     SUM(hc.quantity) AS total_units
                 FROM harvest_collections hc
                 LEFT JOIN workers w ON w.id = hc.worker_id
+                WHERE hc.date = ?
                 GROUP BY hc.worker_id, w.name
                 ORDER BY total_units DESC, worker_name ASC
-            `);
+            `, today);
 
             const regs = Number(totalsFallback?.regs || 0);
             const totalUnits = Number(totalsFallback?.total_units || 0);
