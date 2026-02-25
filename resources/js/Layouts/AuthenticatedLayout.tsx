@@ -87,6 +87,8 @@ export default function Authenticated({
                                     </Dropdown.Trigger>
                                     <Dropdown.Content>
                                         <Dropdown.Link href={route('reports.index')}>Reportes y Exportacion</Dropdown.Link>
+                                        <Dropdown.Link href={route('reports.harvest-collections')}>Cosecha del Dia</Dropdown.Link>
+                                        <Dropdown.Link href={route('reports.harvest-daily')}>Cosecha por Campo</Dropdown.Link>
                                         <Dropdown.Link href={route('reports.attendance-daily')}>Asistencia Diaria</Dropdown.Link>
                                         <Dropdown.Link href={route('reports.attendance-monthly')}>Asistencia Mensual</Dropdown.Link>
                                         <Dropdown.Link href={route('analytics.index')}>Analitica BI</Dropdown.Link>
@@ -310,6 +312,8 @@ export default function Authenticated({
                         <div className="pt-4 pb-1 border-t border-gray-100">
                             <div className="px-4 text-xs font-semibold text-gray-400 uppercase">Inteligencia</div>
                             <ResponsiveNavLink href={route('reports.index')} active={route().current('reports.*')}>Reportes</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('reports.harvest-collections')} active={route().current('reports.harvest-collections')}>Cosecha del Dia</ResponsiveNavLink>
+                            <ResponsiveNavLink href={route('reports.harvest-daily')} active={route().current('reports.harvest-daily')}>Cosecha por Campo</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('reports.attendance-daily')} active={route().current('reports.attendance-daily')}>Asistencia Diaria</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('reports.attendance-monthly')} active={route().current('reports.attendance-monthly')}>Asistencia Mensual</ResponsiveNavLink>
                             <ResponsiveNavLink href={route('analytics.index')} active={route().current('analytics.*')}>Analitica BI</ResponsiveNavLink>
