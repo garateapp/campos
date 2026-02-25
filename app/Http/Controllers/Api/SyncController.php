@@ -220,7 +220,11 @@ class SyncController extends Controller
                 'attendances' => 0,
                 'attendances_skipped_missing_worker' => 0,
                 'collections' => 0,
+                'collections_skipped_missing_worker' => 0,
+                'collections_skipped_invalid_refs' => 0,
                 'assignments' => 0,
+                'assignments_skipped_missing_worker' => 0,
+                'assignments_skipped_invalid_card' => 0,
                 'crops' => 0,
                 'plantings' => 0,
                 'supplies' => 0,
@@ -230,7 +234,9 @@ class SyncController extends Controller
                 'task_assignments' => 0,
                 'workers' => 0,
             ];
-             if (!empty($payload['workers'])) {
+            $workerIdMap = [];
+
+            if (!empty($payload['workers'])) {
                 foreach ($payload['workers'] as $record) {
                     $contractorId = $record['contractor_id'] ?? null;
                     if (empty($contractorId)) {
@@ -250,7 +256,7 @@ class SyncController extends Controller
                         $contractorId = $defaultContractor->id;
                     }
 
-                    Worker::updateOrCreate(
+                    $worker = Worker::updateOrCreate(
                         [
                             'company_id' => $companyId,
                             'id' => $record['id'] ?? null,
@@ -261,31 +267,40 @@ class SyncController extends Controller
                             'contractor_id' => $contractorId,
                         ]
                     );
+
+                    $localWorkerId = isset($record['id']) ? (int) $record['id'] : null;
+                    if ($localWorkerId) {
+                        $workerIdMap[$localWorkerId] = (int) $worker->id;
+                    }
+
                     $processed['workers']++;
                 }
             }
+
+            $resolveWorkerId = function ($rawWorkerId) use ($companyId, $workerIdMap) {
+                if (!$rawWorkerId) {
+                    return null;
+                }
+
+                $incomingId = (int) $rawWorkerId;
+                $resolvedId = $workerIdMap[$incomingId] ?? $incomingId;
+
+                $exists = Worker::withTrashed()
+                    ->where('company_id', $companyId)
+                    ->where('id', $resolvedId)
+                    ->exists();
+
+                return $exists ? $resolvedId : null;
+            };
+
             if (!empty($payload['attendances'])) {
                 foreach ($payload['attendances'] as $record) {
-                    $workerId = $record['worker_id'] ?? null;
+                    $workerId = $resolveWorkerId($record['worker_id'] ?? null);
                     if (!$workerId) {
-                        $processed['attendances_skipped_missing_worker']++;
-                        Log::warning('Sync upload skipped attendance without worker_id', [
-                            'company_id' => $companyId,
-                            'record' => $record,
-                        ]);
-                        continue;
-                    }
-
-                    $workerExists = Worker::withTrashed()
-                        ->where('company_id', $companyId)
-                        ->where('id', $workerId)
-                        ->exists();
-
-                    if (!$workerExists) {
                         $processed['attendances_skipped_missing_worker']++;
                         Log::warning('Sync upload skipped attendance: worker not found', [
                             'company_id' => $companyId,
-                            'worker_id' => $workerId,
+                            'worker_id' => $record['worker_id'] ?? null,
                             'date' => $record['date'] ?? null,
                         ]);
                         continue;
@@ -331,14 +346,68 @@ class SyncController extends Controller
 
             if (!empty($payload['collections'])) {
                 foreach ($payload['collections'] as $record) {
+                    $workerId = $resolveWorkerId($record['worker_id'] ?? null);
+                    if (!$workerId) {
+                        $processed['collections_skipped_missing_worker']++;
+                        Log::warning('Sync upload skipped harvest collection: worker not found', [
+                            'company_id' => $companyId,
+                            'worker_id' => $record['worker_id'] ?? null,
+                            'date' => $record['date'] ?? null,
+                        ]);
+                        continue;
+                    }
+
+                    $harvestContainerId = $record['harvest_container_id'] ?? null;
+                    $harvestContainerExists = !empty($harvestContainerId) && HarvestContainer::withTrashed()
+                        ->where('company_id', $companyId)
+                        ->where('id', $harvestContainerId)
+                        ->exists();
+                    if (!$harvestContainerExists) {
+                        $processed['collections_skipped_invalid_refs']++;
+                        Log::warning('Sync upload skipped harvest collection: harvest_container not found', [
+                            'company_id' => $companyId,
+                            'harvest_container_id' => $harvestContainerId,
+                            'worker_id' => $workerId,
+                            'date' => $record['date'] ?? null,
+                        ]);
+                        continue;
+                    }
+
+                    $fieldId = $record['field_id'] ?? null;
+                    $fieldExists = !empty($fieldId) && Field::withTrashed()
+                        ->where('company_id', $companyId)
+                        ->where('id', $fieldId)
+                        ->exists();
+                    if (!$fieldExists) {
+                        $processed['collections_skipped_invalid_refs']++;
+                        Log::warning('Sync upload skipped harvest collection: field not found', [
+                            'company_id' => $companyId,
+                            'field_id' => $fieldId,
+                            'worker_id' => $workerId,
+                            'date' => $record['date'] ?? null,
+                        ]);
+                        continue;
+                    }
+
+                    $cardId = $record['card_id'] ?? null;
+                    if (!empty($cardId)) {
+                        $cardExists = Card::withTrashed()
+                            ->where('company_id', $companyId)
+                            ->where('id', $cardId)
+                            ->exists();
+                        if (!$cardExists) {
+                            $cardId = null;
+                        }
+                    }
+
                     HarvestCollection::create([
                         'company_id' => $companyId,
-                        'worker_id' => $record['worker_id'],
-                        'card_id' => $record['card_id'] ?? null,
+                        'worker_id' => $workerId,
+                        'card_id' => $cardId,
                         'date' => $record['date'],
-                        'harvest_container_id' => $record['harvest_container_id'],
+                        'harvest_container_id' => $harvestContainerId,
                         'quantity' => $record['quantity'],
-                        'field_id' => $record['field_id'] ?? null,
+                        'field_id' => $fieldId,
                         'is_bin_completed' => !empty($record['is_bin_completed']),
                         'manual_bin_units' => $record['manual_bin_units'] ?? null,
                     ]);
@@ -358,14 +427,43 @@ class SyncController extends Controller
                         $processed['assignments']++;
                         continue;
                     }
+
+                    $workerId = $resolveWorkerId($record['worker_id'] ?? null);
+                    if (!$workerId) {
+                        $processed['assignments_skipped_missing_worker']++;
+                        Log::warning('Sync upload skipped card assignment: worker not found', [
+                            'company_id' => $companyId,
+                            'worker_id' => $record['worker_id'] ?? null,
+                            'card_id' => $record['card_id'] ?? null,
+                            'date' => $record['date'] ?? null,
+                        ]);
+                        continue;
+                    }
+
+                    $cardId = $record['card_id'] ?? null;
+                    $cardExists = !empty($cardId) && Card::withTrashed()
+                        ->where('company_id', $companyId)
+                        ->where('id', $cardId)
+                        ->exists();
+                    if (!$cardExists) {
+                        $processed['assignments_skipped_invalid_card']++;
+                        Log::warning('Sync upload skipped card assignment: card not found', [
+                            'company_id' => $companyId,
+                            'worker_id' => $workerId,
+                            'card_id' => $cardId,
+                            'date' => $record['date'] ?? null,
+                        ]);
+                        continue;
+                    }
+
                     CardAssignment::updateOrCreate(
                         [
                             'company_id' => $companyId,
                             'date' => $record['date'],
-                            'card_id' => $record['card_id'],
+                            'card_id' => $cardId,
                         ],
                         [
-                            'worker_id' => $record['worker_id'],
+                            'worker_id' => $workerId,
                         ]
                     );
                     $processed['assignments']++;
