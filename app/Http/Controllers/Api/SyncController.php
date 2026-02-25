@@ -218,6 +218,7 @@ class SyncController extends Controller
         try {
             $processed = [
                 'attendances' => 0,
+                'attendances_skipped_missing_worker' => 0,
                 'collections' => 0,
                 'assignments' => 0,
                 'crops' => 0,
@@ -265,17 +266,63 @@ class SyncController extends Controller
             }
             if (!empty($payload['attendances'])) {
                 foreach ($payload['attendances'] as $record) {
+                    $workerId = $record['worker_id'] ?? null;
+                    if (!$workerId) {
+                        $processed['attendances_skipped_missing_worker']++;
+                        Log::warning('Sync upload skipped attendance without worker_id', [
+                            'company_id' => $companyId,
+                            'record' => $record,
+                        ]);
+                        continue;
+                    }
+
+                    $workerExists = Worker::withTrashed()
+                        ->where('company_id', $companyId)
+                        ->where('id', $workerId)
+                        ->exists();
+
+                    if (!$workerExists) {
+                        $processed['attendances_skipped_missing_worker']++;
+                        Log::warning('Sync upload skipped attendance: worker not found', [
+                            'company_id' => $companyId,
+                            'worker_id' => $workerId,
+                            'date' => $record['date'] ?? null,
+                        ]);
+                        continue;
+                    }
+
+                    $fieldId = $record['field_id'] ?? null;
+                    if (!empty($fieldId)) {
+                        $fieldExists = Field::withTrashed()
+                            ->where('company_id', $companyId)
+                            ->where('id', $fieldId)
+                            ->exists();
+                        if (!$fieldExists) {
+                            $fieldId = null;
+                        }
+                    }
+
+                    $taskTypeId = $record['task_type_id'] ?? null;
+                    if (!empty($taskTypeId)) {
+                        $taskTypeExists = TaskType::withTrashed()
+                            ->where('id', $taskTypeId)
+                            ->exists();
+                        if (!$taskTypeExists) {
+                            $taskTypeId = null;
+                        }
+                    }
+
                     Attendance::updateOrCreate(
                         [
                             'company_id' => $companyId,
-                            'worker_id' => $record['worker_id'],
+                            'worker_id' => $workerId,
                             'date' => $record['date'],
                         ],
                         [
                             'check_in_time' => $this->normalizeTime($record['check_in_time'] ?? null),
                             'check_out_time' => $this->normalizeTime($record['check_out_time'] ?? null),
-                            'field_id' => $record['field_id'] ?? null,
-                            'task_type_id' => $record['task_type_id'] ?? null,
+                            'field_id' => $fieldId,
+                            'task_type_id' => $taskTypeId,
                         ]
                     );
                     $processed['attendances']++;
