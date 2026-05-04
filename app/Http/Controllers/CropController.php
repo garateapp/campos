@@ -402,4 +402,19 @@ class CropController extends Controller
             })
             ->first();
     }
+    public function qrprint(Request $request)
+    {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        $crops = Crop::with(['species.family', 'varietyEntity', 'varieties', 'field'])
+            ->when($fieldIds !== null, function ($query) use ($fieldIds) {
+                $query->whereIn('field_id', $fieldIds);
+            })
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Crops/QRPrint', [
+            'crops' => $crops,
+        ]);
+    }
 }
