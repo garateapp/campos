@@ -96,6 +96,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
 
     // Crops (Cuarteles)
     Route::post('crops/import', [CropController::class, 'import'])->name('crops.import');
+    Route::get('crops/qrprint', [CropController::class, 'qrprint'])->name('crops.qr.print');
     Route::resource('crops', CropController::class);
     Route::resource('families', FamilyController::class);
     Route::resource('species', SpeciesController::class);
@@ -116,17 +117,17 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCompanyAccess:
     Route::get('card-assignments', [CardAssignmentController::class, 'index'])->name('card-assignments.index');
     Route::post('card-assignments', [CardAssignmentController::class, 'store'])->name('card-assignments.store');
     Route::post('card-assignments/copy-previous', [CardAssignmentController::class, 'copyPrevious'])->name('card-assignments.copy-previous');
-    
+
     // Envases de Cosecha
     Route::resource('harvest-containers', \App\Http\Controllers\HarvestContainerController::class);
-    
+
     // Operations Routes
     Route::get('attendance', [\App\Http\Controllers\AttendanceController::class, 'index'])->name('attendance.index');
     Route::post('attendance', [\App\Http\Controllers\AttendanceController::class, 'store'])->name('attendance.store');
-    
+
     Route::get('harvest-collection', [\App\Http\Controllers\HarvestCollectionController::class, 'index'])->name('harvest-collection.index');
     Route::post('harvest-collection', [\App\Http\Controllers\HarvestCollectionController::class, 'store'])->name('harvest-collection.store');
-    
+
     // Plantings (Labores)
     Route::post('plantings/import', [PlantingController::class, 'import'])->name('plantings.import');
     Route::resource('plantings', PlantingController::class);

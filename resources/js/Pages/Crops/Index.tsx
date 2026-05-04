@@ -2,6 +2,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 
+import { ScanQrCode } from 'lucide-react';
+
 interface Crop {
     id: number;
     name: string;
@@ -34,6 +36,15 @@ export default function Index({ crops }: IndexProps) {
     const handleDelete = (id: number, name: string) => {
         if (confirm(`¿Estás seguro de eliminar el cuartel "${name}"?`)) {
             router.delete(route('crops.destroy', id));
+        }
+    };
+
+    const handlePrintQR = (cropId: number, cropName: string) => {
+        // Construye la URL para generar el QR.
+        // Esta ruta necesitaría ser definida en tu backend de Laravel
+        // para generar y mostrar el código QR para imprimir.
+        if (window) {
+            window.open(route('crops.qr.print', { id: cropId, name: cropName }), '_blank');
         }
     };
 
@@ -91,7 +102,7 @@ export default function Index({ crops }: IndexProps) {
             <Head title="Cuarteles" />
 
             <div className="py-6">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="max-w-8xl px-4 sm:px-6 lg:px-8">
                     {(flash?.success || flash?.error || flash?.import_errors) && (
                         <div className="mb-4 space-y-2">
                             {flash?.success && <div className="p-3 rounded bg-green-100 text-green-800 text-sm">{flash.success}</div>}
@@ -119,7 +130,7 @@ export default function Index({ crops }: IndexProps) {
                             className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 shadow-sm"
                         />
                         <div className="mt-3 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-md p-3">
-                            Formato CSV esperado: <code>species_name,field_name,variety_names,name,scientific_name,days_to_harvest,notes</code>. 
+                            Formato CSV esperado: <code>species_name,field_name,variety_names,name,scientific_name,days_to_harvest,notes</code>.
                             Las variedades van separadas por <code>|</code> (pipe) y deben pertenecer a la especie; la primera se usa como primaria.
                         </div>
                     </div>
@@ -138,11 +149,12 @@ export default function Index({ crops }: IndexProps) {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Días Cosecha</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Labores</th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">QR</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {filteredCrops.length === 0 ? (
-                                        <tr>
+                                        <tr className="hover:bg-gray-50 transition-colors">
                                             <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
                                                 No se encontraron cuarteles.
                                                 <Link href={route('crops.create')} className="text-green-600 hover:text-green-700 ml-1">Crear uno nuevo</Link>
@@ -199,6 +211,14 @@ export default function Index({ crops }: IndexProps) {
                                                     >
                                                         Eliminar
                                                     </button>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                                    <button
+                                                        onClick={() => handlePrintQR(crop.id, crop.name)}
+                                                        className="text-blue-600 hover:text-blue-900"
+                                                        title={`Imprimir QR para ${crop.name}`}
+
+                                                    > Imprimir QR</button>
                                                 </td>
                                             </tr>
                                         ))
