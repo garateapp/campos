@@ -167,7 +167,7 @@ class SyncController extends Controller
                         'hours' => $plan->total_jh_planned,
                     ];
                 })->values(),
-            'task_types' => TaskType::all(['id', 'name']),
+            'task_types' => TaskType::all(['id', 'name', 'work_payment_mode']),
             'labor_types' => LaborType::all(['id', 'name']),
             'unit_of_measures' => UnitOfMeasure::all(['id', 'name', 'code']),
             'tasks' => Task::where('company_id', $companyId)

@@ -1,14 +1,25 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
+
+interface ActivityWorker {
+    worker_id: number;
+    worker_name: string;
+    quantity: number | null;
+}
 
 interface Activity {
     id: number;
     type: string;
+    task_type_id: number | null;
+    task_type_name: string | null;
+    task_type_work_payment_mode: WorkPaymentMode | null;
     activity_date: string;
     description: string | null;
-    performer_name: string;
-    metadata: any;
+    performer_name: string | null;
+    work_payment_mode: WorkPaymentMode | string | null;
+    workers: ActivityWorker[];
+    metadata: Record<string, unknown>;
 }
 
 interface Harvest {
@@ -38,6 +49,36 @@ interface PlantingShowProps {
         harvests: Harvest[];
         total_harvested_kg: number;
     };
+    taskTypes: TaskType[];
+    workers: Worker[];
+}
+
+interface TaskType {
+    id: number;
+    name: string;
+    work_payment_mode: WorkPaymentMode;
+}
+
+type WorkPaymentMode = 'day' | 'piece_rate';
+
+interface Worker {
+    id: number;
+    name: string;
+    rut: string | null;
+    contractor_id: number | null;
+    contractor_name: string | null;
+}
+
+interface ActivityWorkerForm {
+    worker_id: string;
+    quantity: string;
+}
+
+interface ActivityFormData {
+    task_type_id: string;
+    activity_date: string;
+    description: string;
+    workers: ActivityWorkerForm[];
 }
 
 const typeLabels: Record<string, string> = {
@@ -47,6 +88,11 @@ const typeLabels: Record<string, string> = {
     pruning: 'Poda',
     scouting: 'Monitoreo',
     other: 'Otro',
+};
+
+const workPaymentModeLabels: Record<string, string> = {
+    piece_rate: 'Por trato',
+    day: 'Por día',
 };
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -59,17 +105,102 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
     failed: { label: 'Fallido', color: 'text-red-700', bg: 'bg-red-100' },
 };
 
-export default function Show({ planting }: PlantingShowProps) {
+function isPieceRateTaskType(taskType: TaskType | null | undefined): boolean {
+    return taskType?.work_payment_mode === 'piece_rate';
+}
+
+function formatQuantity(quantity: number | null): string {
+    if (quantity === null || quantity === undefined) {
+        return '';
+    }
+
+    return Number(quantity).toLocaleString('es-CL');
+}
+
+export default function Show({ planting, taskTypes, workers }: PlantingShowProps) {
     const [activeTab, setActiveTab] = useState<'info' | 'activities' | 'harvests'>('info');
+    const [workerSearch, setWorkerSearch] = useState('');
+    const [contractorFilter, setContractorFilter] = useState('all');
     const harvestedPerHectare = planting.planted_area_hectares
         ? planting.total_harvested_kg / planting.planted_area_hectares
         : null;
 
-    const activityForm = useForm({
-        type: 'irrigation',
+    const activityForm = useForm<ActivityFormData>({
+        task_type_id: '',
         activity_date: new Date().toISOString().split('T')[0],
         description: '',
+        workers: [],
     });
+    const activityErrors = activityForm.errors as Record<string, string>;
+    const selectedTaskType = useMemo(
+        () => taskTypes.find((taskType) => taskType.id.toString() === activityForm.data.task_type_id) ?? null,
+        [activityForm.data.task_type_id, taskTypes],
+    );
+    const isPieceRateTask = isPieceRateTaskType(selectedTaskType);
+    const contractorOptions = useMemo(() => {
+        const options = new Map<string, string>();
+
+        workers.forEach((worker) => {
+            const contractorId = worker.contractor_id?.toString() ?? 'none';
+            options.set(contractorId, worker.contractor_name || 'Sin contratista');
+        });
+
+        return Array.from(options.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'es-CL'));
+    }, [workers]);
+    const filteredWorkers = useMemo(() => {
+        const search = workerSearch.trim().toLocaleLowerCase('es-CL');
+
+        return workers.filter((worker) => {
+            const contractorId = worker.contractor_id?.toString() ?? 'none';
+            const matchesContractor = contractorFilter === 'all' || contractorFilter === contractorId;
+            const searchableText = [
+                worker.name,
+                worker.rut,
+                worker.contractor_name || 'Sin contratista',
+            ].filter(Boolean).join(' ').toLocaleLowerCase('es-CL');
+
+            return matchesContractor && (search === '' || searchableText.includes(search));
+        });
+    }, [contractorFilter, workerSearch, workers]);
+
+    const handleTaskTypeChange = (taskTypeId: string) => {
+        const taskType = taskTypes.find((item) => item.id.toString() === taskTypeId);
+        const shouldQuantify = isPieceRateTaskType(taskType);
+
+        activityForm.setData('task_type_id', taskTypeId);
+        if (!shouldQuantify) {
+            activityForm.setData('workers', activityForm.data.workers.map((worker) => ({ ...worker, quantity: '' })));
+        }
+    };
+
+    const toggleActivityWorker = (workerId: number) => {
+        const selectedWorkerId = workerId.toString();
+        const isSelected = activityForm.data.workers.some((worker) => worker.worker_id === selectedWorkerId);
+
+        activityForm.setData(
+            'workers',
+            isSelected
+                ? activityForm.data.workers.filter((worker) => worker.worker_id !== selectedWorkerId)
+                : [...activityForm.data.workers, { worker_id: selectedWorkerId, quantity: '' }],
+        );
+    };
+
+    const updateActivityWorkerQuantity = (workerId: number, quantity: string) => {
+        const selectedWorkerId = workerId.toString();
+
+        activityForm.setData(
+            'workers',
+            activityForm.data.workers.map((worker) =>
+                worker.worker_id === selectedWorkerId ? { ...worker, quantity } : worker,
+            ),
+        );
+    };
+
+    const findSelectedWorker = (workerId: number): ActivityWorkerForm | undefined => {
+        return activityForm.data.workers.find((worker) => worker.worker_id === workerId.toString());
+    };
 
     const harvestForm = useForm({
         harvest_date: new Date().toISOString().split('T')[0],
@@ -185,14 +316,22 @@ export default function Show({ planting }: PlantingShowProps) {
                                             <div>
                                                 <label className="text-xs font-medium text-gray-500 uppercase">Tipo</label>
                                                 <select
-                                                    value={activityForm.data.type}
-                                                    onChange={e => activityForm.setData('type', e.target.value)}
+                                                    value={activityForm.data.task_type_id}
+                                                    onChange={e => handleTaskTypeChange(e.target.value)}
                                                     className="mt-1 block w-full border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500"
+                                                    required
                                                 >
-                                                    {Object.keys(typeLabels).map(type => (
-                                                        <option key={type} value={type}>{typeLabels[type]}</option>
+                                                    <option value="">Seleccione tipo de tarea</option>
+                                                    {taskTypes.map(taskType => (
+                                                        <option key={taskType.id} value={taskType.id}>{taskType.name}</option>
                                                     ))}
                                                 </select>
+                                                {selectedTaskType && (
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {isPieceRateTask ? 'Por trato: ingresa cantidad por jornalero.' : 'Por día: solo marca los jornaleros.'}
+                                                    </p>
+                                                )}
+                                                {activityForm.errors.task_type_id && <p className="mt-1 text-xs text-red-600">{activityForm.errors.task_type_id}</p>}
                                             </div>
                                             <div>
                                                 <label className="text-xs font-medium text-gray-500 uppercase">Fecha</label>
@@ -222,6 +361,100 @@ export default function Show({ planting }: PlantingShowProps) {
                                                     placeholder="Breve detalle de lo realizado..."
                                                 />
                                             </div>
+                                            <div className="md:col-span-3">
+                                                <label className="text-xs font-medium text-gray-500 uppercase">Trabajadores / Jornaleros</label>
+                                                <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                    <div className="md:col-span-2">
+                                                        <input
+                                                            type="search"
+                                                            value={workerSearch}
+                                                            onChange={e => setWorkerSearch(e.target.value)}
+                                                            className="block w-full rounded-lg border-gray-300 text-sm focus:border-green-500 focus:ring-green-500"
+                                                            placeholder="Buscar por nombre, RUT o contratista..."
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <select
+                                                            value={contractorFilter}
+                                                            onChange={e => setContractorFilter(e.target.value)}
+                                                            className="block w-full rounded-lg border-gray-300 text-sm focus:border-green-500 focus:ring-green-500"
+                                                        >
+                                                            <option value="all">Todos los contratistas</option>
+                                                            {contractorOptions.map(contractor => (
+                                                                <option key={contractor.id} value={contractor.id}>{contractor.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                                    <span>{filteredWorkers.length} de {workers.length} jornaleros visibles</span>
+                                                    {activityForm.data.workers.length > 0 && (
+                                                        <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700">
+                                                            {activityForm.data.workers.length} seleccionados
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-green-100 bg-white p-2">
+                                                    {workers.length === 0 ? (
+                                                        <p className="px-3 py-4 text-sm text-gray-500">No hay jornaleros disponibles.</p>
+                                                    ) : filteredWorkers.length === 0 ? (
+                                                        <p className="px-3 py-4 text-sm text-gray-500">No hay jornaleros que coincidan con el filtro.</p>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                            {filteredWorkers.map(worker => {
+                                                                const selectedWorker = findSelectedWorker(worker.id);
+                                                                const selectedWorkerIndex = activityForm.data.workers.findIndex(
+                                                                    formWorker => formWorker.worker_id === worker.id.toString(),
+                                                                );
+                                                                const quantityError = selectedWorkerIndex >= 0
+                                                                    ? activityErrors[`workers.${selectedWorkerIndex}.quantity`]
+                                                                    : undefined;
+
+                                                                return (
+                                                                    <div
+                                                                        key={worker.id}
+                                                                        className={`rounded-lg border p-3 transition-colors ${selectedWorker
+                                                                            ? 'border-green-300 bg-green-50'
+                                                                            : 'border-gray-100 bg-white'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <input
+                                                                                id={`activity-worker-${worker.id}`}
+                                                                                type="checkbox"
+                                                                                checked={Boolean(selectedWorker)}
+                                                                                onChange={() => toggleActivityWorker(worker.id)}
+                                                                                className="mt-1 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                                                            />
+                                                                            <label htmlFor={`activity-worker-${worker.id}`} className="min-w-0 flex-1">
+                                                                                <span className="block text-sm font-semibold text-gray-900">{worker.name}</span>
+                                                                                {worker.rut && <span className="block text-xs text-gray-500">{worker.rut}</span>}
+                                                                                <span className="block text-xs text-gray-400">{worker.contractor_name || 'Sin contratista'}</span>
+                                                                            </label>
+                                                                            {isPieceRateTask && selectedWorker && (
+                                                                                <div className="w-28">
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        step="0.01"
+                                                                                        min="0.01"
+                                                                                        value={selectedWorker.quantity}
+                                                                                        onChange={e => updateActivityWorkerQuantity(worker.id, e.target.value)}
+                                                                                        className="block w-full rounded-md border-gray-300 text-sm focus:border-green-500 focus:ring-green-500"
+                                                                                        placeholder="Cantidad"
+                                                                                        required
+                                                                                    />
+                                                                                    {quantityError && <p className="mt-1 text-[11px] text-red-600">{quantityError}</p>}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {activityErrors.workers && <p className="mt-1 text-xs text-red-600">{activityErrors.workers}</p>}
+                                            </div>
                                         </form>
                                     </div>
 
@@ -229,21 +462,52 @@ export default function Show({ planting }: PlantingShowProps) {
                                         {planting.activities.length === 0 ? (
                                             <p className="text-center text-gray-500 py-8">No se han registrado actividades aún.</p>
                                         ) : (
-                                            planting.activities.map(activity => (
-                                                <div key={activity.id} className="flex gap-4 p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                                                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl">
-                                                        {activity.type === 'irrigation' ? '💧' : activity.type === 'fertilization' ? '🧪' : '🚜'}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex justify-between items-start">
-                                                            <h5 className="font-bold text-gray-900">{typeLabels[activity.type]}</h5>
-                                                            <span className="text-xs text-gray-500 font-medium">{activity.activity_date}</span>
+                                            planting.activities.map(activity => {
+                                                const activityLabel = activity.task_type_name || typeLabels[activity.type] || activity.type;
+                                                const paymentModeLabel = activity.work_payment_mode
+                                                    ? workPaymentModeLabels[activity.work_payment_mode] || activity.work_payment_mode
+                                                    : null;
+
+                                                return (
+                                                    <div key={activity.id} className="flex gap-4 p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                                                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl">
+                                                            {activity.type === 'irrigation' ? '💧' : activity.type === 'fertilization' ? '🧪' : '🚜'}
                                                         </div>
-                                                        <p className="text-sm text-gray-600 mt-1">{activity.description || 'Sin descripción'}</p>
-                                                        <p className="text-xs text-gray-400 mt-2">Realizado por: {activity.performer_name}</p>
+                                                        <div className="flex-1">
+                                                            <div className="flex justify-between items-start gap-4">
+                                                                <div>
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <h5 className="font-bold text-gray-900">{activityLabel}</h5>
+                                                                        {paymentModeLabel && (
+                                                                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                                                                                {paymentModeLabel}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-400 mt-1">Registrado por: {activity.performer_name || '-'}</p>
+                                                                </div>
+                                                                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{activity.activity_date}</span>
+                                                            </div>
+                                                            <p className="text-sm text-gray-600 mt-2">{activity.description || 'Sin descripción'}</p>
+                                                            {activity.workers.length > 0 && (
+                                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                                    {activity.workers.map(worker => (
+                                                                        <span
+                                                                            key={`${activity.id}-${worker.worker_id}`}
+                                                                            className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                                                                        >
+                                                                            {worker.worker_name}
+                                                                            {activity.work_payment_mode === 'piece_rate' && worker.quantity !== null
+                                                                                ? `: ${formatQuantity(worker.quantity)}`
+                                                                                : ''}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         )}
                                     </div>
                                 </div>

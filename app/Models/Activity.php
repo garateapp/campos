@@ -16,6 +16,7 @@ class Activity extends Model
         'company_id',
         'planting_id',
         'performed_by',
+        'task_type_id',
         'type',
         'activity_date',
         'description',
@@ -41,6 +42,14 @@ class Activity extends Model
     public function performer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'performed_by');
+    }
+
+    /**
+     * Get the task type used to classify this activity.
+     */
+    public function taskType(): BelongsTo
+    {
+        return $this->belongsTo(TaskType::class);
     }
 
     /**

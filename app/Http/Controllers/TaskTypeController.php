@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TaskType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class TaskTypeController extends Controller
@@ -14,7 +15,7 @@ class TaskTypeController extends Controller
     public function index()
     {
         return Inertia::render('MasterTables/TaskTypes/Index', [
-            'taskTypes' => TaskType::withCount('tasks')->orderBy('name')->get()
+            'taskTypes' => TaskType::select('id', 'name', 'work_payment_mode')->withCount('tasks')->orderBy('name')->get()
         ]);
     }
 
@@ -25,6 +26,7 @@ class TaskTypeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'work_payment_mode' => ['required', Rule::in(['day', 'piece_rate'])],
         ]);
 
         TaskType::create($validated);
@@ -39,6 +41,7 @@ class TaskTypeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'work_payment_mode' => ['required', Rule::in(['day', 'piece_rate'])],
         ]);
 
         $taskType->update($validated);

@@ -9,11 +9,15 @@ use App\Models\Field;
 use App\Models\Harvest;
 use App\Models\Planting;
 use App\Models\Species;
+use App\Models\TaskType;
 use App\Models\Variety;
+use App\Models\Worker;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -210,7 +214,21 @@ class PlantingController extends Controller
             abort(403, 'No tienes acceso a esta labor.');
         }
 
-        $planting->load(['field', 'crop.species.family', 'crop.varietyEntity', 'activities.performer', 'harvests', 'costCenter']);
+        $planting->load(['field', 'crop.species.family', 'crop.varietyEntity', 'activities.performer', 'activities.taskType', 'harvests', 'costCenter']);
+        $taskTypes = TaskType::where('company_id', $user->company_id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'work_payment_mode']);
+        $workers = Worker::where('company_id', $user->company_id)
+            ->with('contractor:id,business_name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'rut', 'contractor_id'])
+            ->map(fn ($worker) => [
+                'id' => $worker->id,
+                'name' => $worker->name,
+                'rut' => $worker->rut,
+                'contractor_id' => $worker->contractor_id,
+                'contractor_name' => $worker->contractor?->business_name,
+            ]);
 
         return Inertia::render('Plantings/Show', [
             'planting' => [
@@ -227,14 +245,27 @@ class PlantingController extends Controller
                 'status' => $planting->status,
                 'expected_yield_kg' => $planting->expected_yield_kg,
                 'notes' => $planting->notes,
-                'activities' => $planting->activities->map(fn ($a) => [
-                    'id' => $a->id,
-                    'type' => $a->type,
-                    'activity_date' => $a->activity_date->format('Y-m-d'),
-                    'description' => $a->description,
-                    'performer_name' => $a->performer?->name,
-                    'metadata' => $a->metadata,
-                ]),
+                'activities' => $planting->activities->map(function ($a) {
+                    $metadata = is_array($a->metadata) ? $a->metadata : [];
+
+                    return [
+                        'id' => $a->id,
+                        'type' => $a->type,
+                        'task_type_id' => $a->task_type_id,
+                        'task_type_name' => $a->taskType?->name ?? ($metadata['task_type_name'] ?? null),
+                        'task_type_work_payment_mode' => $a->taskType?->work_payment_mode,
+                        'activity_date' => $a->activity_date->format('Y-m-d'),
+                        'description' => $a->description,
+                        'performer_name' => $a->performer?->name,
+                        'work_payment_mode' => $metadata['work_payment_mode'] ?? $a->taskType?->work_payment_mode ?? null,
+                        'workers' => collect($metadata['workers'] ?? [])->map(fn ($worker) => [
+                            'worker_id' => (int) ($worker['worker_id'] ?? 0),
+                            'worker_name' => $worker['worker_name'] ?? 'Jornalero sin nombre',
+                            'quantity' => $worker['quantity'] ?? null,
+                        ])->values()->all(),
+                        'metadata' => $metadata,
+                    ];
+                }),
                 'harvests' => $planting->harvests->map(fn ($h) => [
                     'id' => $h->id,
                     'harvest_date' => $h->harvest_date->format('Y-m-d'),
@@ -245,6 +276,8 @@ class PlantingController extends Controller
                 ]),
                 'total_harvested_kg' => $planting->harvests->sum('quantity_kg'),
             ],
+            'taskTypes' => $taskTypes,
+            'workers' => $workers,
         ]);
     }
 
@@ -488,18 +521,88 @@ class PlantingController extends Controller
      */
     public function storeActivity(Request $request, Planting $planting)
     {
+        $user = auth()->user();
+        $fieldIds = $user->fieldScopeIds();
+        if ($fieldIds !== null && !in_array($planting->field_id, $fieldIds, true)) {
+            abort(403, 'No tienes acceso a esta labor.');
+        }
+
+        $companyId = $user->company_id;
         $validated = $request->validate([
-            'type' => 'required|in:irrigation,fertilization,pest_control,pruning,scouting,other',
+            'task_type_id' => [
+                'required',
+                'integer',
+                Rule::exists('task_types', 'id')->where(fn ($query) => $query
+                    ->where('company_id', $companyId)
+                    ->whereNull('deleted_at')),
+            ],
             'activity_date' => 'required|date',
             'description' => 'nullable|string|max:1000',
-            'metadata' => 'nullable|array',
+            'workers' => 'required|array|min:1',
+            'workers.*.worker_id' => [
+                'required',
+                'integer',
+                'distinct',
+                Rule::exists('workers', 'id')->where(fn ($query) => $query
+                    ->where('company_id', $companyId)
+                    ->whereNull('deleted_at')),
+            ],
+            'workers.*.quantity' => 'nullable|numeric|min:0',
         ]);
 
+        $taskType = TaskType::where('company_id', $companyId)->findOrFail($validated['task_type_id']);
+        $isPieceRate = $taskType->work_payment_mode === 'piece_rate';
+
+        if ($isPieceRate) {
+            foreach ($validated['workers'] as $index => $worker) {
+                $quantity = $worker['quantity'] ?? null;
+                if ($quantity === null || $quantity === '' || (float) $quantity <= 0) {
+                    throw ValidationException::withMessages([
+                        "workers.{$index}.quantity" => 'La cantidad es obligatoria para tareas por trato.',
+                    ]);
+                }
+            }
+        }
+
+        $workerIds = collect($validated['workers'])
+            ->pluck('worker_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        $workerRecords = Worker::where('company_id', $companyId)
+            ->whereIn('id', $workerIds)
+            ->get(['id', 'name'])
+            ->keyBy('id');
+
+        if ($workerRecords->count() !== $workerIds->count()) {
+            throw ValidationException::withMessages([
+                'workers' => 'Uno o más jornaleros no pertenecen a la compañía.',
+            ]);
+        }
+
+        $activityWorkers = collect($validated['workers'])->map(function ($worker) use ($workerRecords, $isPieceRate) {
+            $workerId = (int) $worker['worker_id'];
+
+            return [
+                'worker_id' => $workerId,
+                'worker_name' => $workerRecords[$workerId]->name,
+                'quantity' => $isPieceRate ? (float) $worker['quantity'] : null,
+            ];
+        })->values()->all();
+
         Activity::create([
-            'company_id' => auth()->user()->company_id,
+            'company_id' => $companyId,
             'planting_id' => $planting->id,
-            'performed_by' => auth()->id(),
-            ...$validated,
+            'performed_by' => $user->id,
+            'task_type_id' => $taskType->id,
+            'type' => 'other',
+            'activity_date' => $validated['activity_date'],
+            'description' => $validated['description'] ?? null,
+            'metadata' => [
+                'task_type_name' => $taskType->name,
+                'work_payment_mode' => $taskType->work_payment_mode,
+                'workers' => $activityWorkers,
+            ],
         ]);
 
         return redirect()->back()->with('success', 'Actividad registrada.');
