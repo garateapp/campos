@@ -30,6 +30,6 @@
         "@google/generative-ai": "^0.24.1",
         "chart.js": "^4.5.1",
         "react-chartjs-2": "^5.3.1",
-        "lucide-react": "^0.475.0",
+        "lucide-react": "^0.475.0"
     }
 }
